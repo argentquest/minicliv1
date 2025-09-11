@@ -165,6 +165,7 @@ TOOL_STYLEGUIDE="Please check if the following code conforms to the PEP 8 style 
             'UI_THEME': 'Application theme (light or dark)',
             'MAX_TOKENS': 'Maximum tokens for AI responses (1-4000)',
             'TEMPERATURE': 'AI response creativity (0.0-1.0, higher = more creative)',
+            'CURRENT_SYSTEM_PROMPT': 'Currently selected system message file (e.g., systemmessage_security.txt)',
             'TOOL_LINT': 'Command to run a linter on the code',
             'TOOL_TEST': 'Command to run unit tests on the code',
             'TOOL_REFACTOR': 'Prompt to ask the AI to refactor the code',
@@ -204,6 +205,21 @@ TOOL_STYLEGUIDE="Please check if the following code conforms to the PEP 8 style 
                 return False, "API_KEY cannot be empty"
         
         return True, ""
+    
+    def update_single_var(self, key: str, value: str) -> bool:
+        """Update a single environment variable and save to file."""
+        try:
+            # Load current environment variables
+            current_vars = self.load_env_file()
+            
+            # Update the specific variable
+            current_vars[key] = value
+            
+            # Save back to file
+            return self.save_env_file(current_vars)
+        except Exception as e:
+            print(f"Error updating environment variable {key}: {e}")
+            return False
 
 # Global instance
 env_manager = EnvManager()

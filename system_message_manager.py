@@ -3,13 +3,31 @@ System message manager for custom AI system messages.
 """
 import os
 from typing import Optional, List, Dict, Any
+from env_manager import env_manager
 
 class SystemMessageManager:
     """Manages system messages from file or default."""
     
-    def __init__(self, system_message_file: str = "systemmessage.txt"):
+    def __init__(self, system_message_file: str = "systemmessage_default.txt"):
         self.system_message_file = system_message_file
-        self.current_message_file = system_message_file  # Track currently selected file
+        
+        # Load current system prompt from environment or use default
+        try:
+            env_vars = env_manager.load_env_file()
+            saved_prompt = env_vars.get('CURRENT_SYSTEM_PROMPT', system_message_file)
+            self.current_message_file = saved_prompt
+            
+            # If CURRENT_SYSTEM_PROMPT wasn't in the .env file, save the default
+            if 'CURRENT_SYSTEM_PROMPT' not in env_vars:
+                env_manager.update_single_var('CURRENT_SYSTEM_PROMPT', system_message_file)
+        except Exception:
+            self.current_message_file = system_message_file
+            # Try to save the default value
+            try:
+                env_manager.update_single_var('CURRENT_SYSTEM_PROMPT', system_message_file)
+            except Exception:
+                pass  # Ignore if we can't save
+            
         self.default_system_message = (
             "You are a helpful AI assistant that helps with code analysis. "
             "The user has provided the following codebase:\n\n{codebase_content}"
@@ -182,6 +200,11 @@ class SystemMessageManager:
             content = self.load_custom_system_message(filename)
             if content:
                 self.current_message_file = filename
+                # Save the current system prompt to environment variables
+                try:
+                    env_manager.update_single_var('CURRENT_SYSTEM_PROMPT', filename)
+                except Exception as e:
+                    print(f"Warning: Could not save current system prompt to .env: {e}")
                 return True
         return False
     

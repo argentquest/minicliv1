@@ -50,6 +50,7 @@
   .venv
   env/
   venv/
+  .mypy_cache/
   ENV/
   env.bak/
   venv.bak/
@@ -80,3 +81,4 @@
   .mypy_cache/
   .dmypy.json
   dmypy.json
+

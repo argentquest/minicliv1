@@ -33,6 +33,10 @@ class SimpleModernCodeChatApp:
         
         # Load environment and initialize components
         self._load_environment()
+        
+        # Reload theme preference after dotenv loads .env file
+        theme_manager._load_theme_preference()
+        
         self._setup_window()
         self._create_ui()
         
@@ -156,6 +160,11 @@ class SimpleModernCodeChatApp:
                                          style_type='primary', icon_action='send')
         self.send_btn.pack(side='left', padx=(0, 10))
         
+        self.execute_system_btn = SimpleModernButton(primary_actions, text="Execute System Prompt", 
+                                                   command=self._execute_system_prompt,
+                                                   style_type='accent', icon_action='play')
+        self.execute_system_btn.pack(side='left', padx=(0, 10))
+        
         self.clear_btn = SimpleModernButton(primary_actions, text="Clear Response", 
                                           command=self._clear_response, icon_action='clear')
         self.clear_btn.pack(side='left', padx=(0, 10))
@@ -179,6 +188,14 @@ class SimpleModernCodeChatApp:
         self.settings_btn = SimpleModernButton(secondary_actions, text="Settings", 
                                              command=self._open_settings, icon_action='settings')
         self.settings_btn.pack(side='left', padx=(0, 10))
+        
+        # Theme toggle button
+        current_theme = theme_manager.current_theme_name
+        theme_icon = 'sun' if current_theme == 'dark' else 'moon'
+        theme_text = '☀️ Light' if current_theme == 'dark' else '🌙 Dark'
+        self.theme_btn = SimpleModernButton(secondary_actions, text=theme_text, 
+                                          command=self._toggle_theme, icon_action=theme_icon)
+        self.theme_btn.pack(side='left', padx=(0, 10))
         
         self.system_msg_btn = SimpleModernButton(secondary_actions, text="System Message", 
                                                 command=self._open_system_message_editor,
@@ -300,8 +317,13 @@ class SimpleModernCodeChatApp:
         """Handle file selection changes."""
         selected_count = self.files_list.get_selection_count()
         total_count = len(self.state.codebase_files)
+        persistent_count = len(self.state.get_persistent_files())
+        
         if total_count > 0:
-            self.status_bar.set_status(f"Ready - {selected_count}/{total_count} files selected", "ready")
+            status_msg = f"Ready - {selected_count}/{total_count} files selected"
+            if persistent_count > 0 and len(self.state.conversation_history) > 0:
+                status_msg += f" (using {persistent_count} persistent files from first turn)"
+            self.status_bar.set_status(status_msg, "ready")
         else:
             self.status_bar.set_status("Ready to analyze your code! 🚀", "ready")
     
@@ -316,10 +338,16 @@ class SimpleModernCodeChatApp:
             show_simple_toast(self.root, "Please configure your API key in Settings", "warning")
             return
         
-        # Check if any files are selected
+        # Check if any files are selected or if we have persistent files from previous turn
         selected_files = self.files_list.get_selected_file_paths()
-        if not selected_files:
+        persistent_files = self.state.get_persistent_files()
+        is_first_message = len(self.state.conversation_history) == 0
+        
+        if is_first_message and not selected_files:
             show_simple_toast(self.root, "Please select files for analysis", "warning")
+            return
+        elif not is_first_message and not selected_files and not persistent_files:
+            show_simple_toast(self.root, "No files available for analysis. Please select files or start a new conversation.", "warning")
             return
         
         self.status_bar.set_status("Processing your question...", "info")
@@ -327,6 +355,84 @@ class SimpleModernCodeChatApp:
         
         # Run in separate thread
         threading.Thread(target=self._process_question_async, args=(question,), daemon=True).start()
+    
+    def _execute_system_prompt(self):
+        """Execute the system prompt directly without a user question."""
+        if not self.ai_processor.validate_api_key():
+            show_simple_toast(self.root, "Please configure your API key in Settings", "warning")
+            return
+        
+        # Check if any files are selected or if we have persistent files from previous turn
+        selected_files = self.files_list.get_selected_file_paths()
+        persistent_files = self.state.get_persistent_files()
+        is_first_message = len(self.state.conversation_history) == 0
+        
+        if is_first_message and not selected_files:
+            show_simple_toast(self.root, "Please select files for analysis", "warning")
+            return
+        elif not is_first_message and not selected_files and not persistent_files:
+            show_simple_toast(self.root, "No files available for analysis. Please select files or start a new conversation.", "warning")
+            return
+        
+        self.status_bar.set_status("Executing system prompt...", "info")
+        self.send_btn.configure(state='disabled')
+        self.execute_system_btn.configure(state='disabled')
+        
+        # Run in separate thread - pass empty string as question to indicate system prompt execution
+        threading.Thread(target=self._process_system_prompt_async, daemon=True).start()
+    
+    def _process_system_prompt_async(self):
+        """Process system prompt execution asynchronously."""
+        try:
+            # Get files to analyze
+            is_first_message = len(self.state.conversation_history) == 0
+            
+            if is_first_message:
+                # First message: use currently selected files and save them for future use
+                selected_files = self.files_list.get_selected_file_paths()
+                if selected_files:
+                    self.state.set_persistent_files(selected_files)
+                    codebase_content = self.scanner.get_codebase_content(selected_files)
+                else:
+                    codebase_content = ""
+            else:
+                # Use persistent files if available
+                persistent_files = self.state.get_persistent_files()
+                if persistent_files:
+                    codebase_content = self.scanner.get_codebase_content(persistent_files)
+                else:
+                    # Fallback to currently selected files
+                    selected_files = self.files_list.get_selected_file_paths()
+                    if selected_files:
+                        codebase_content = self.scanner.get_codebase_content(selected_files)
+                    else:
+                        codebase_content = ""
+            
+            # Get the system message content directly
+            system_message = system_message_manager.get_system_message(codebase_content)
+            
+            # Process system message as if it were a user question
+            ai_response = self.ai_processor.process_question(
+                question=system_message,
+                conversation_history=[],  # No conversation history for system prompt execution
+                codebase_content="",      # Already included in system message
+                model=self.state.selected_model,
+                update_callback=lambda response, status: self.root.after(0, self.status_bar.set_status, status, "success")
+            )
+            
+            # Add system prompt execution to conversation history
+            self.state.conversation_history.append(ConversationMessage(role="user", content="[System Prompt Executed]"))
+            self.state.conversation_history.append(ConversationMessage(role="assistant", content=ai_response))
+            
+            # Update conversation history in tabbed chat area
+            self.root.after(0, self._update_conversation_in_tabs)
+            
+            # Update UI on main thread
+            self.root.after(0, self._update_response_ui, ai_response, True)
+            
+        except Exception as e:
+            error_msg = str(e)
+            self.root.after(0, self._update_response_ui, f"Error executing system prompt: {error_msg}", False)
     
     def _process_question_async(self, question):
         """Process question asynchronously."""
@@ -340,13 +446,28 @@ class SimpleModernCodeChatApp:
             # Add user message to conversation history
             self.state.conversation_history.append(ConversationMessage(role="user", content=question))
             
-            # Get codebase content from selected files when needed
+            # Get codebase content when needed
             if needs_codebase_context:
-                selected_files = self.files_list.get_selected_file_paths()
-                if selected_files:
-                    codebase_content = self.scanner.get_codebase_content(selected_files)
+                if is_first_message:
+                    # First message: use currently selected files and save them for future use
+                    selected_files = self.files_list.get_selected_file_paths()
+                    if selected_files:
+                        self.state.set_persistent_files(selected_files)
+                        codebase_content = self.scanner.get_codebase_content(selected_files)
+                    else:
+                        codebase_content = ""
                 else:
-                    codebase_content = ""
+                    # Subsequent messages with tool commands: use persistent files if available
+                    persistent_files = self.state.get_persistent_files()
+                    if persistent_files:
+                        codebase_content = self.scanner.get_codebase_content(persistent_files)
+                    else:
+                        # Fallback to currently selected files if no persistent files
+                        selected_files = self.files_list.get_selected_file_paths()
+                        if selected_files:
+                            codebase_content = self.scanner.get_codebase_content(selected_files)
+                        else:
+                            codebase_content = ""
             else:
                 codebase_content = ""  # Not needed for regular follow-up messages
             
@@ -389,10 +510,13 @@ class SimpleModernCodeChatApp:
         # This is called when the user clears the conversation from the history tab
         self.state.clear_conversation()
         self.status_bar.set_status("Conversation cleared from history tab", "info")
+        # Update file selection status to remove persistent files indicator
+        self._on_file_selection_change()
     
     def _update_response_ui(self, response: str, success: bool):
         """Update response UI on main thread."""
         self.send_btn.configure(state='normal')
+        self.execute_system_btn.configure(state='normal')
         
         if success:
             self.chat_area.set_response(response)
@@ -464,6 +588,32 @@ class SimpleModernCodeChatApp:
                 error_msg = f"Error loading history: {str(e)}"
                 self.status_bar.set_status(error_msg, "error")
                 show_simple_toast(self.root, error_msg, "error")
+    
+    def _toggle_theme(self):
+        """Toggle between light and dark themes."""
+        try:
+            # Toggle the theme
+            old_theme = theme_manager.current_theme_name
+            theme_manager.toggle_theme()
+            new_theme = theme_manager.current_theme_name
+            
+            # Update the theme button text and icon
+            theme_icon = 'sun' if new_theme == 'dark' else 'moon'
+            theme_text = '☀️ Light' if new_theme == 'dark' else '🌙 Dark'
+            self.theme_btn.configure(text=theme_text)
+            
+            # Save the theme preference to environment
+            from env_manager import env_manager
+            env_manager.update_single_var('UI_THEME', new_theme)
+            
+            # Show status message
+            self.status_bar.set_status(f"Switched to {new_theme} theme - Restart for full effect", "info")
+            show_simple_toast(self.root, f"Theme changed to {new_theme}.\nRestart the application for full effect.", "info")
+            
+        except Exception as e:
+            error_msg = f"Error changing theme: {str(e)}"
+            self.status_bar.set_status(error_msg, "error")
+            show_simple_toast(self.root, error_msg, "error")
     
     def _open_settings(self):
         """Open enhanced environment settings dialog."""
@@ -679,11 +829,14 @@ class SimpleModernCodeChatApp:
                         system_message_manager.set_current_system_message_file(file_info['filename'])
                         break
             
-            # Update status
+            # Clear current conversation for clean context switch
+            self._new_conversation()
+            
+            # Update status to indicate both system message change and new conversation
             if system_message_manager.has_custom_system_message():
-                self.status_bar.set_status(f"Switched to {selected_display_name} system message", "info")
+                self.status_bar.set_status(f"Switched to {selected_display_name} - New conversation started", "info")
             else:
-                self.status_bar.set_status("Switched to default system message", "info")
+                self.status_bar.set_status("Switched to default system message - New conversation started", "info")
                 
         except Exception as e:
             print(f"Error changing system message: {e}")

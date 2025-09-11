@@ -12,6 +12,7 @@ from datetime import datetime
 
 from theme import theme_manager
 from icons import icon_manager
+from code_fragment_parser import CodeFragmentParser, show_code_fragments_dialog
 
 class SimpleModernButton(tk.Button):
     """Simplified modern button with basic styling."""
@@ -184,6 +185,7 @@ class SimpleChatArea(tk.Frame):
         self.configure(bg=theme.colors['bg_primary'])
         self.send_callback = send_callback
         self.tool_vars = {}  # Store TOOL environment variables
+        self.current_response = ""  # Store current response text for code fragment parsing
         
         self._load_tool_variables()
         self._create_widgets()
@@ -256,6 +258,13 @@ class SimpleChatArea(tk.Frame):
         r_label = SimpleModernLabel(r_header, text="🤖 AI Response")
         r_label.pack(side='left')
         
+        # Code fragments button (initially hidden)
+        self.code_fragments_btn = SimpleModernButton(r_header, text="📋 Code Fragments", 
+                                                   command=self._show_code_fragments,
+                                                   style_type='secondary')
+        self.code_fragments_btn.pack(side='right')
+        self.code_fragments_btn.pack_forget()  # Hide initially
+        
         # Response text area (using normal state to allow selection, but prevent editing)
         self.response_text = scrolledtext.ScrolledText(response_frame, wrap='word', 
                                                       bg=theme.colors['bg_tertiary'],
@@ -322,10 +331,21 @@ class SimpleChatArea(tk.Frame):
         """Set the response text."""
         self.response_text.delete("1.0", tk.END)
         self.response_text.insert("1.0", response)
+        
+        # Store response text for code fragment parsing
+        self.current_response = response
+        
+        # Show/hide code fragments button based on detection
+        if CodeFragmentParser.has_code_fragments(response):
+            self.code_fragments_btn.pack(side='right')
+        else:
+            self.code_fragments_btn.pack_forget()
     
     def clear_response(self):
         """Clear the response text area."""
         self.response_text.delete("1.0", tk.END)
+        self.current_response = ""
+        self.code_fragments_btn.pack_forget()  # Hide button when clearing
     
     def _on_enter_key(self, event):
         """Handle Enter key in question text area."""
@@ -434,6 +454,11 @@ class SimpleChatArea(tk.Frame):
         self.response_text.mark_set(tk.INSERT, "1.0")
         self.response_text.see(tk.INSERT)
         return 'break'
+    
+    def _show_code_fragments(self):
+        """Show code fragments dialog for current response."""
+        if hasattr(self, 'current_response') and self.current_response:
+            show_code_fragments_dialog(self, self.current_response)
     
     def _create_tool_section(self, parent, theme):
         """Create the TOOL commands section with dropdown and inject button."""

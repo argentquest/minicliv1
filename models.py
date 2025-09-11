@@ -39,6 +39,7 @@ class AppState:
         self.conversation_history: List[ConversationMessage] = []
         self.selected_directory: str = ""
         self.codebase_files: List[str] = []
+        self.persistent_selected_files: List[str] = []  # Files selected in first turn
         self.api_key: str = ""
         self.selected_model: str = AppConfig.get_default().default_model
         
@@ -50,6 +51,15 @@ class AppState:
     def clear_conversation(self):
         """Clear the conversation history."""
         self.conversation_history = []
+        self.persistent_selected_files = []  # Also clear persistent files when conversation is cleared
+        
+    def set_persistent_files(self, selected_files: List[str]):
+        """Set the files that should persist across turns."""
+        self.persistent_selected_files = selected_files.copy()
+        
+    def get_persistent_files(self) -> List[str]:
+        """Get the files that should persist across turns."""
+        return self.persistent_selected_files.copy()
         
     def get_conversation_dict(self) -> List[Dict[str, str]]:
         """Get conversation history as list of dicts for API calls."""
