@@ -1,12 +1,49 @@
 """
 Environment file manager for editing .env files.
+
+This module provides comprehensive management of .env files including parsing,
+validation, and safe writing operations. It preserves comments, formatting,
+and handles various .env file formats while providing a clean API for
+environment variable management.
+
+Key Features:
+- Safe .env file parsing with error handling
+- Preservation of comments and original formatting
+- Validation of environment variable values
+- Atomic file operations to prevent corruption
+- Default .env file creation for new installations
+- Support for inline comments and various quoting styles
+
+The EnvManager class is designed to be used as both a standalone utility
+and as part of the larger application's configuration system.
 """
 import os
 from typing import Dict, List, Tuple, Optional
 import re
 
 class EnvManager:
-    """Manages .env file reading, parsing, and writing."""
+    """
+    Manages .env file reading, parsing, and writing operations.
+    
+    This class provides a comprehensive interface for managing environment
+    files while preserving the original file structure, comments, and
+    formatting. It supports standard .env file conventions including
+    quoted values, inline comments, and proper escaping.
+    
+    Features:
+    - Parse existing .env files while preserving structure
+    - Validate environment variable values based on type
+    - Safe atomic writing to prevent file corruption
+    - Automatic creation of default .env files
+    - Support for various value formats (quoted, unquoted, etc.)
+    - Inline comment preservation
+    
+    Usage:
+        env_manager = EnvManager('.env')
+        env_vars = env_manager.load_env_file()
+        env_vars['NEW_VAR'] = 'new_value'
+        env_manager.save_env_file(env_vars)
+    """
     
     def __init__(self, env_path: str = ".env"):
         self.env_path = env_path
