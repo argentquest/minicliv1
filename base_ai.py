@@ -5,6 +5,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Callable, Optional, Tuple
 from system_message_manager import system_message_manager
+from security_utils import SecurityUtils
 
 
 class AIProviderConfig:
@@ -77,6 +78,20 @@ class BaseAIProvider(ABC):
             "auth_header": self.config.auth_header,
             "has_api_key": bool(self.api_key)
         }
+    
+    def get_secure_debug_info(self) -> Dict[str, Any]:
+        """Get debug information with sensitive data masked for safe logging."""
+        debug_info = {
+            "name": self.config.name,
+            "api_url": self.config.api_url,
+            "supports_tokens": self.config.supports_tokens,
+            "auth_header": self.config.auth_header,
+            "has_api_key": bool(self.api_key),
+            "api_key": SecurityUtils.mask_api_key(self.api_key) if self.api_key else None,
+            "api_key_valid": SecurityUtils.validate_api_key_format(self.api_key, self.config.name)
+        }
+        
+        return SecurityUtils.safe_debug_info(debug_info)
     
     def create_system_message(self, codebase_content: str) -> Dict[str, str]:
         """
@@ -163,12 +178,48 @@ class BaseAIProvider(ABC):
             # Start timing the API call
             start_time = time.time()
             
-            # Make API call
-            response = requests.post(self.config.api_url, headers=headers, json=data)
+            # Make API call with timeout and retry logic
+            timeout = (30, 120)  # (connect timeout, read timeout) in seconds
+            max_retries = 3
+            retry_count = 0
             
-            if response.status_code != 200:
-                error_msg = self._handle_api_error(response.status_code, response.text)
-                raise Exception(error_msg)
+            while retry_count < max_retries:
+                try:
+                    response = requests.post(
+                        self.config.api_url, 
+                        headers=headers, 
+                        json=data,
+                        timeout=timeout
+                    )
+                    
+                    if response.status_code != 200:
+                        error_msg = self._handle_api_error(response.status_code, response.text)
+                        
+                        # Retry on server errors (5xx), but not client errors (4xx)
+                        if response.status_code >= 500 and retry_count < max_retries - 1:
+                            retry_count += 1
+                            time.sleep(min(2 ** retry_count, 10))  # Exponential backoff, max 10s
+                            continue
+                        
+                        raise Exception(error_msg)
+                    
+                    break  # Success, exit retry loop
+                    
+                except requests.exceptions.Timeout as e:
+                    if retry_count < max_retries - 1:
+                        retry_count += 1
+                        time.sleep(min(2 ** retry_count, 10))  # Exponential backoff
+                        continue
+                    else:
+                        raise Exception("Request timed out after multiple retries. Please check your network connection and try again.")
+                        
+                except requests.exceptions.ConnectionError as e:
+                    if retry_count < max_retries - 1:
+                        retry_count += 1
+                        time.sleep(min(2 ** retry_count, 10))  # Exponential backoff
+                        continue
+                    else:
+                        raise Exception("Connection failed after multiple retries. Please check your internet connection.")
             
             response_data = response.json()
             
@@ -192,26 +243,30 @@ class BaseAIProvider(ABC):
             
             return ai_response
             
-        except requests.exceptions.ConnectionError:
-            error_msg = "Connection error. Please check your internet connection."
+        except requests.exceptions.RequestException as e:
+            # This catches all requests exceptions not handled above
+            error_msg = f"Network request failed: {str(e)}"
             if update_callback:
                 update_callback(f"Error: {error_msg}", error_msg)
             raise Exception(error_msg)
-        except requests.exceptions.Timeout:
-            error_msg = "Request timed out. Please try again."
+        except ValueError as e:
+            # JSON parsing errors
+            error_msg = f"Invalid API response format - could not parse JSON: {str(e)}"
             if update_callback:
                 update_callback(f"Error: {error_msg}", error_msg)
             raise Exception(error_msg)
         except KeyError as e:
-            error_msg = f"Invalid API response format: {str(e)}"
+            error_msg = f"Invalid API response structure - missing field: {str(e)}"
             if update_callback:
                 update_callback(f"Error: {error_msg}", error_msg)
             raise Exception(error_msg)
         except Exception as e:
-            error_msg = str(e)
+            # Sanitize error message to avoid leaking sensitive information
+            from security_utils import SecurityUtils
+            sanitized_msg = SecurityUtils.sanitize_log_message(str(e))
             if update_callback:
-                update_callback(f"Error: {error_msg}", error_msg)
-            raise
+                update_callback(f"Error: {sanitized_msg}", sanitized_msg)
+            raise Exception(sanitized_msg)
     
     def process_question_async(
         self,

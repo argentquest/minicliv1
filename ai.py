@@ -128,13 +128,17 @@ class AIProcessor:
             return temp_provider.get_provider_info()
     
     def get_provider_debug_info(self) -> Dict[str, Any]:
-        """Get detailed debug information for the current provider."""
-        base_info = self._provider.get_provider_info()
+        """Get detailed debug information for the current provider with sensitive data masked."""
+        # Use secure debug info instead of raw provider info
+        base_info = self._provider.get_secure_debug_info()
         
-        # Add provider-specific debug info if available
+        # Add provider-specific debug info if available (also masked)
         if hasattr(self._provider, 'get_debug_info'):
             debug_info = self._provider.get_debug_info()
-            base_info.update(debug_info)
+            # Ensure provider-specific debug info is also secure
+            from security_utils import SecurityUtils
+            secure_debug_info = SecurityUtils.safe_debug_info(debug_info)
+            base_info.update(secure_debug_info)
         
         return base_info
     
