@@ -67,18 +67,32 @@
    Run the app and click **Settings** → **Environment Variables** to configure your API keys.
 
 4. **Launch the Application**
-   ```bash
-   python modern_main.py
-   ```
-   
-   *Alternative launch methods:*
-   ```bash
-   # For window visibility issues:
-   python start_ui.py
-   
-   # Debug mode with enhanced error handling:
-   python debug_app.py
-   ```
+
+    **GUI Mode (Recommended):**
+    ```bash
+    python modern_main.py
+    ```
+
+    **Alternative GUI Launchers:**
+    ```bash
+    # For window visibility issues:
+    python start_ui.py
+
+    # Windows batch file:
+    run_app.bat
+    ```
+
+    **CLI Modes:**
+    ```bash
+    # Standard CLI mode:
+    python minicli.py --cli --folder ./src --question "What does this code do?"
+
+    # Rich CLI mode (enhanced terminal interface):
+    python codechat-rich.py analyze ./src "What does this code do?"
+
+    # Interactive Rich CLI:
+    python codechat-rich.py interactive
+    ```
 
 ---
 
@@ -101,11 +115,20 @@
 - **Project Detection** - Recognizes common project structures
 
 ### 🔧 **Multiple AI Providers**
-- **OpenAI Integration** - GPT-3.5, GPT-4, GPT-4 Turbo
-- **OpenRouter Support** - Access to multiple AI models
-- **Flexible Configuration** - Easy provider switching
+- **OpenRouter Integration** - Access to 100+ AI models from multiple providers
+- **Tachyon Provider** - Custom AI provider support
+- **Provider Factory Pattern** - Extensible architecture for adding new providers
+- **Flexible Configuration** - Easy provider switching and model selection
+- **Token Tracking** - Real-time token usage and cost monitoring
 
-### 📝 **Conversation Management**
+### 💻 **Multiple Interface Modes**
+- **GUI Mode** - Full graphical interface with modern UI
+- **Standard CLI** - Command-line interface for automation and scripting
+- **Rich CLI** - Enhanced terminal interface with syntax highlighting and progress bars
+- **Interactive Mode** - Step-by-step guided analysis with smart prompts
+- **Batch Processing** - Automated analysis of multiple codebases
+
+### � **Conversation Management**
 - **Save/Load History** - Never lose important conversations  
 - **Export Options** - Save conversations as JSON files
 - **New Conversation** - Clean slate for different topics
@@ -117,9 +140,13 @@
 ### Getting Started
 
 1. **Launch the Application**
-   ```bash
-   python modern_main.py
-   ```
+    ```bash
+    # GUI Mode (recommended for first-time users):
+    python modern_main.py
+
+    # Or use the Rich CLI for enhanced terminal experience:
+    python codechat-rich.py interactive
+    ```
 
 2. **Configure Your API Key** (First Time Only)
    - Click the **Settings** button
@@ -211,6 +238,10 @@ The application includes specialized system messages for different analysis type
 | `systemmessage_architecture.txt` | System Architect | Design and structure |
 | `systemmessage_debugging.txt` | Debug Specialist | Bug finding and fixes |
 | `systemmessage_testing.txt` | Test Engineer | Test coverage and strategy |
+| `systemmessage_optimization.txt` | Optimization Expert | Code optimization and refactoring |
+| `systemmessage_refactoring.txt` | Refactoring Specialist | Code restructuring and cleanup |
+| `systemmessage_documentation.txt` | Documentation Expert | Documentation generation |
+| `systemmessage_beginner.txt` | Beginner Assistant | Simplified explanations |
 
 ### Advanced Settings
 
@@ -232,10 +263,13 @@ code-chat-ai/
 │   ├── minicli.py              # Main application orchestration
 │   ├── modern_main.py          # Primary application entry point
 │   ├── start_ui.py             # Alternative launcher with UI forcing
-│   └── debug_app.py            # Debug launcher with error handling
+│   └── run_app.bat             # Windows batch launcher
 │
 ├── 📁 AI & Processing
 │   ├── ai.py                   # AI API integration and processing
+│   ├── base_ai.py              # Base AI provider interface
+│   ├── openrouter_provider.py  # OpenRouter AI provider implementation
+│   ├── tachyon_provider.py     # Tachyon AI provider implementation
 │   ├── system_message_manager.py  # Expert mode management
 │   └── systemmessage_*.txt     # Expert mode definitions
 │
@@ -244,21 +278,52 @@ code-chat-ai/
 │   ├── tabbed_chat_area.py     # Chat interface with tabs
 │   ├── theme.py                # Dark/light theme system
 │   ├── icons.py                # Icon management
-│   └── *_dialog.py             # Various dialog windows
+│   ├── ui_controller.py        # UI state management
+│   ├── env_settings_dialog.py  # Environment settings dialog
+│   ├── env_validator.py        # Environment validation utilities
+│   ├── system_message_dialog.py # System message selection dialog
+│   └── about_dialog.py         # About dialog
 │
-├── 📁 Data & State
+├── 📁 CLI Interfaces
+│   ├── cli_interface.py        # Standard CLI interface
+│   ├── cli_rich.py             # Rich CLI interface components
+│   └── codechat-rich.py        # Rich CLI entry point
+│
+├── 📁 Data & State Management
 │   ├── models.py               # Data structures and state management
 │   ├── env_manager.py          # Environment variable handling
-│   └── file_scanner.py         # Codebase file scanning
+│   ├── file_scanner.py         # Standard codebase file scanning
+│   ├── lazy_file_scanner.py    # Lazy loading file scanner for large codebases
+│   ├── file_lock.py            # Safe JSON file operations
+│   └── logger.py               # Structured logging system
 │
 ├── 📁 Utilities
 │   ├── code_fragment_parser.py # Code extraction from AI responses
-│   └── conversation_history_tab.py  # History management
+│   ├── conversation_history_tab.py  # History management
+│   ├── pattern_matcher.py      # Tool command pattern matching
+│   ├── security_utils.py       # Security utilities for API keys
+│   └── api_client.igmore       # API client utilities
 │
-└── 📁 Configuration
+├── 📁 Testing
+│   ├── tests/                  # Test suite directory
+│   │   ├── __init__.py
+│   │   ├── conftest.py         # Test configuration and fixtures
+│   │   ├── test_*.py           # Individual test files
+│   │   └── ...
+│   ├── pytest.ini             # Pytest configuration
+│   └── test_file.py           # Additional test utilities
+│
+└── 📁 Configuration & Documentation
     ├── requirements.txt        # Python dependencies
-    ├── .env                   # Environment configuration
-    └── README.md              # This file
+    ├── requirements-test.txt   # Test dependencies
+    ├── .env                    # Environment configuration
+    ├── .envTemplate            # Environment configuration template
+    ├── .gitignore              # Git ignore patterns
+    ├── AGENTS.md               # Agent development guidelines
+    ├── CLI_USAGE.md            # CLI usage documentation
+    ├── TESTING_GUIDE.md        # Testing documentation
+    ├── README.md               # This file
+    └── .roomodes               # Custom mode definitions
 ```
 
 ---
@@ -275,8 +340,11 @@ python --version
 # Reinstall dependencies
 pip install -r requirements.txt --force-reinstall
 
-# Try alternative launcher
+# Try alternative GUI launcher
 python start_ui.py
+
+# Or try CLI mode to test basic functionality
+python minicli.py --cli --folder . --question "test"
 ```
 
 **❌ API key errors**
@@ -310,23 +378,32 @@ UI_THEME=light
 
 ### Debug Mode
 
-For detailed error information:
+For detailed error information, use the Rich CLI with verbose output:
 ```bash
-python debug_app.py
+# Test configuration and environment
+python codechat-rich.py config --validate
+
+# Run analysis with detailed logging
+python codechat-rich.py analyze ./src "test question" --verbose
+
+# Check environment variables
+python codechat-rich.py config --show
 ```
 
-This launcher provides:
-- Detailed error messages
-- Stack trace information
-- Component status checking
-- Safe error handling
+The Rich CLI provides:
+- Detailed error messages and validation
+- Environment configuration checking
+- Component status verification
+- Structured logging output
 
 ### Getting Help
 
-1. **Check the logs** - Error messages appear in the status bar
-2. **Use debug mode** - Run `python debug_app.py` for detailed errors
-3. **Reset configuration** - Delete `.env` file to reset to defaults
-4. **Update dependencies** - Run `pip install -r requirements.txt --upgrade`
+1. **Check the logs** - Error messages appear in the status bar and log files in `logs/` directory
+2. **Use Rich CLI validation** - Run `python codechat-rich.py config --validate` for configuration issues
+3. **Test with minimal setup** - Use `python codechat-rich.py config --show` to verify environment
+4. **Reset configuration** - Delete `.env` file to reset to defaults
+5. **Update dependencies** - Run `pip install -r requirements.txt --upgrade`
+6. **Check CLI_USAGE.md** - Comprehensive CLI documentation and examples
 
 ---
 
@@ -341,11 +418,19 @@ This launcher provides:
 ### Running Tests
 
 ```bash
-# Test OpenRouter integration
-python test_openrouter.py
+# Run all tests
+python -m pytest tests/ -v
 
-# Manual testing
-python debug_app.py
+# Run tests with coverage
+python -m pytest --cov=. --cov-report=html --cov-exclude=tests/*
+
+# Test specific components
+python -m pytest tests/test_ai_processor.py -v
+python -m pytest tests/test_file_scanner.py -v
+python -m pytest tests/test_env_validator.py -v
+
+# Run integration tests
+python -m pytest tests/test_integration.py -v
 ```
 
 ### Contributing

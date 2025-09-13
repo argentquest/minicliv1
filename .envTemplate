@@ -169,3 +169,15 @@ REQUEST_TIMEOUT="60"
 # - Others: meta-llama/llama-3.1-8b-instruct, deepseek/deepseek-chat
 #
 # =============================================================================
+
+# =============================================================================
+# 📁 OUTPUT DIRECTORY CONFIGURATION
+# =============================================================================
+
+# Directory for saving analysis results and interactive session outputs
+# This directory will be created automatically if it doesn't exist
+# Default: "results" (relative to project root)
+# Examples: "results", "output", "./analysis", "/path/to/save/dir"
+DIR_SAVE="results"
+
+# =============================================================================

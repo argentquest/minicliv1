@@ -543,7 +543,7 @@ class RichCLIInterface:
         now = datetime.now()
         date_str = now.strftime("%Y%m%d")
         time_str = now.strftime("%H%M%S")
-        
+
         # Clean system prompt name
         if system_prompt and system_prompt.strip():
             # Remove file extension and path
@@ -552,17 +552,20 @@ class RichCLIInterface:
             system_name = re.sub(r'[^\w\-_]', '_', system_name)[:20]
         else:
             system_name = "default"
-        
+
         # Clean question for filename use
         question_clean = re.sub(r'[^\w\s\-_]', '', question)
         question_clean = re.sub(r'\s+', '_', question_clean.strip())[:50]
         if not question_clean:
             question_clean = "analysis"
-        
-        # Create results directory if it doesn't exist
-        results_dir = Path("results")
-        results_dir.mkdir(exist_ok=True)
-        
+
+        # Get save directory from environment or default to "results"
+        save_dir = os.getenv('DIR_SAVE', 'results')
+
+        # Create directory if it doesn't exist (with parents=True for custom paths)
+        results_dir = Path(save_dir)
+        results_dir.mkdir(exist_ok=True, parents=True)
+
         # Generate filename
         filename = f"{date_str}_{time_str}_{system_name}_{question_clean}.md"
         return str(results_dir / filename)

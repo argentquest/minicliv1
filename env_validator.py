@@ -160,10 +160,16 @@ class EnvValidator:
                      "Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)", 
                      "logging")
         
-        self.add_rule('LOG_DIR', 
-                     self._validate_log_directory,
-                     "Directory for log files (defaults to 'logs')", 
-                     "logging")
+        self.add_rule('LOG_DIR',
+                      self._validate_log_directory,
+                      "Directory for log files (defaults to 'logs')",
+                      "logging")
+
+        # Output Directory Configuration
+        self.add_rule('DIR_SAVE',
+                      self._validate_save_directory,
+                      "Directory for saving analysis results (defaults to 'results')",
+                      "output")
     
     def _setup_tool_command_rules(self):
         """Set up validation rules for tool commands."""
@@ -493,15 +499,15 @@ class EnvValidator:
         """Validate log directory path."""
         if not value.strip():
             return True, ""  # Optional - will use default
-        
+
         # Check if path is valid
         try:
             log_path = Path(value)
-            
+
             # Check for dangerous paths
             if str(log_path).startswith(('/etc', '/root', '/bin', '/usr')):
                 return False, "Cannot use system directories for logging"
-            
+
             # Check if parent directory exists or can be created
             parent = log_path.parent
             if not parent.exists():
@@ -511,11 +517,57 @@ class EnvValidator:
                     return False, f"Cannot create log directory: {value} (permission denied)"
                 except Exception as e:
                     return False, f"Invalid log directory path: {str(e)}"
-            
+
             return True, ""
-            
+
         except Exception as e:
             return False, f"Invalid log directory path: {str(e)}"
+
+    def _validate_save_directory(self, value: str) -> Tuple[bool, str]:
+        """Validate save directory path for analysis results."""
+        if not value.strip():
+            return True, ""  # Optional - will use default "results"
+
+        # Check if path is valid
+        try:
+            save_path = Path(value)
+
+            # Check for dangerous paths
+            dangerous_paths = ('/etc', '/root', '/bin', '/usr', '/var', '/tmp')
+            if str(save_path).startswith(dangerous_paths):
+                return False, "Cannot use system directories for saving results"
+
+            # Check for absolute paths that might be problematic
+            if save_path.is_absolute() and len(save_path.parts) < 2:
+                return False, "Save directory path seems too short for an absolute path"
+
+            # Check if parent directory exists or can be created
+            parent = save_path.parent
+            if not parent.exists():
+                try:
+                    parent.mkdir(parents=True, exist_ok=True)
+                except PermissionError:
+                    return False, f"Cannot create save directory: {value} (permission denied)"
+                except Exception as e:
+                    return False, f"Invalid save directory path: {str(e)}"
+
+            # Try to create the directory itself to test write permissions
+            try:
+                if not save_path.exists():
+                    save_path.mkdir(parents=True, exist_ok=True)
+                # Test write permission by trying to create a temporary file
+                test_file = save_path / ".write_test"
+                test_file.touch()
+                test_file.unlink()  # Clean up
+            except PermissionError:
+                return False, f"No write permission for save directory: {value}"
+            except Exception as e:
+                return False, f"Cannot write to save directory: {str(e)}"
+
+            return True, ""
+
+        except Exception as e:
+            return False, f"Invalid save directory path: {str(e)}"
     
     def _generate_suggestion(self, var_name: str, value: str, error_msg: str) -> str:
         """Generate helpful suggestions for common validation errors."""
@@ -528,7 +580,8 @@ class EnvValidator:
             'UI_THEME': "Use 'light', 'dark', or 'auto'",
             'WINDOW_SIZE': "Use format like '1200x800' for a 1200px wide by 800px tall window",
             'LOG_LEVEL': "Use DEBUG for development, INFO for normal operation, WARNING/ERROR for production",
-            'LOG_DIR': "Use a relative path like 'logs' or absolute path like '/var/log/minicli'"
+            'LOG_DIR': "Use a relative path like 'logs' or absolute path like '/var/log/minicli'",
+            'DIR_SAVE': "Use a relative path like 'results' or 'output' for saving analysis results"
         }
         
         if var_name in suggestions:

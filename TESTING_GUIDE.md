@@ -1,18 +1,20 @@
-# OpenRouter Integration Testing Guide
+# Comprehensive Testing Guide
+
+This guide covers testing all components of the Code Chat AI application, including AI providers, file scanning, CLI interfaces, and integration testing.
 
 ## Quick Configuration Test
 
-1. **Run the configuration test:**
-   ```bash
-   cd C:\Code2025\minicli
-   python test_openrouter.py
-   ```
-   
-   This will verify:
-   - Environment variables are loaded correctly
-   - AI processor initializes with OpenRouter
-   - Provider configuration is correct
-   - Token support is enabled
+1. **Run the configuration validation:**
+    ```bash
+    cd C:\Code2025\minicli
+    python codechat-rich.py config --validate
+    ```
+
+    This will verify:
+    - Environment variables are loaded correctly
+    - AI provider configuration is valid
+    - File paths and permissions are correct
+    - Required dependencies are available
 
 ## Full Application Test
 
@@ -23,12 +25,21 @@ python minicli.py
 python start_ui.py
 ```
 
-### Step 2: Configure Provider (Optional)
-The app should automatically use OpenRouter since `PROVIDER` defaults to "openrouter" in the code.
+### Step 2: Configure Provider
+The app supports multiple AI providers. Configure your preferred provider in `.env`:
 
-To explicitly test with OpenRouter, you can add this to your `.env` file:
+**For OpenRouter (default):**
 ```
 PROVIDER=openrouter
+API_KEY=sk-or-v1-your-openrouter-key-here
+DEFAULT_MODEL=openai/gpt-4
+```
+
+**For Tachyon:**
+```
+PROVIDER=tachyon
+API_KEY=your-tachyon-key-here
+DEFAULT_MODEL=tachyon-model-name
 ```
 
 ### Step 3: Test Basic Functionality
@@ -44,9 +55,11 @@ PROVIDER=openrouter
    - Click "Send Question" button
 
 3. **Verify Provider Integration:**
-   - Check the status bar at the bottom
-   - Should show: `Ready • Openrouter • Input: X tokens • Output: Y tokens • Total: Z • Time: X.XXs`
-   - Verify response appears in the response area
+    - Check the status bar at the bottom
+    - Should show: `Ready • [Provider Name] • Input: X tokens • Output: Y tokens • Total: Z • Time: X.XXs`
+    - For OpenRouter: Shows "Openrouter" as provider name
+    - For Tachyon: Shows "Tachyon" as provider name
+    - Verify response appears in the response area
 
 ### Step 4: Test Features
 
@@ -66,21 +79,34 @@ PROVIDER=openrouter
 
 ### Step 5: Test Provider Switching
 
-Add to `.env`:
-```
-PROVIDER=tachyon
-```
+**Test OpenRouter to Tachyon switching:**
+1. Update `.env`:
+   ```
+   PROVIDER=tachyon
+   API_KEY=your-tachyon-key-here
+   DEFAULT_MODEL=tachyon-model-name
+   ```
 
-Restart the app and verify it attempts to use Tachyon (will likely fail without proper Tachyon URL).
+2. Restart the app and verify:
+   - Status bar shows "Tachyon" as provider
+   - App attempts to connect to Tachyon service
+   - Error handling works gracefully if Tachyon is unavailable
+
+**Test Tachyon to OpenRouter switching:**
+1. Switch back to OpenRouter configuration
+2. Verify the app successfully connects and processes requests
 
 ## Expected Results
 
 ### ✅ Success Indicators:
 - App launches without errors
-- OpenRouter API calls succeed
+- AI provider API calls succeed (OpenRouter or Tachyon)
 - Token counts displayed in status bar
 - Response time shown
-- Status shows "Openrouter" provider name
+- Status shows correct provider name ("Openrouter" or "Tachyon")
+- File scanning works correctly
+- System message selection functions
+- Conversation history is maintained
 
 ### ❌ Common Issues:
 - **"API key not configured"**: Check `.env` file has `API_KEY`
@@ -91,31 +117,79 @@ Restart the app and verify it attempts to use Tachyon (will likely fail without 
 ## Environment Variables Used
 
 ```bash
-API_KEY=your_openrouter_api_key
+# Required
+API_KEY=your_api_key_here
+DEFAULT_MODEL=provider/model-name
+MODELS=provider/model1,provider/model2,provider/model3
+
+# Provider Configuration
 PROVIDER=openrouter  # or tachyon
-DEFAULT_MODEL=x-ai/grok-code-fast-1
-MODELS=deepseek/deepseek-chat-v3.1,google/gemini-2.5-flash,x-ai/grok-code-fast-1
+OPENROUTER_API_KEY=sk-or-v1-...  # Alternative OpenRouter key
+
+# Optional Settings
+MAX_TOKENS=4000
+TEMPERATURE=0.7
+UI_THEME=auto
+IGNORE_FOLDERS=venv,.venv,node_modules,.git
+DIR_SAVE=results
 ```
 
 ## Troubleshooting
 
 1. **Check Console Output:**
-   - Look for error messages in the terminal where you launched the app
+    - Look for error messages in the terminal where you launched the app
+    - Check log files in the `logs/` directory
 
 2. **Verify Environment:**
-   - Run `python test_openrouter.py` first
+    - Run `python codechat-rich.py config --validate` to check configuration
+    - Run `python codechat-rich.py config --show` to display current settings
 
 3. **Test API Key:**
-   - Try making a direct API call to OpenRouter to verify the key works
+    - For OpenRouter: Verify key starts with `sk-or-v1-`
+    - For Tachyon: Verify your Tachyon API key is correct
+    - Test with `python codechat-rich.py models --test model-name`
 
 4. **Check Network:**
-   - Ensure you can access https://openrouter.ai/
+    - Ensure you can access provider endpoints
+    - OpenRouter: https://openrouter.ai/
+    - Tachyon: Verify your Tachyon service URL is accessible
 
 ## Advanced Testing
 
+### Model Testing
 Test different models by updating `DEFAULT_MODEL` in `.env`:
-- `deepseek/deepseek-chat-v3.1`
-- `google/gemini-2.5-flash` 
-- `x-ai/grok-code-fast-1`
 
-Each should work with the same OpenRouter provider configuration.
+**OpenRouter Models:**
+- `openai/gpt-3.5-turbo` - Fast, cost-effective
+- `openai/gpt-4` - High-quality analysis
+- `anthropic/claude-3-sonnet` - Balanced performance
+- `anthropic/claude-3-opus` - Maximum quality
+- `google/gemini-pro` - Google's latest model
+- `deepseek/deepseek-chat` - Cost-effective alternative
+- `x-ai/grok-2` - Specialized coding assistant
+
+**Tachyon Models:**
+- Configure according to your Tachyon service documentation
+
+### CLI Testing
+Test all CLI modes:
+```bash
+# Standard CLI
+python minicli.py --cli --folder ./src --question "Analyze this code"
+
+# Rich CLI
+python codechat-rich.py analyze ./src "Analyze this code"
+
+# Interactive Rich CLI
+python codechat-rich.py interactive
+
+# Configuration validation
+python codechat-rich.py config --validate
+```
+
+### File Scanner Testing
+Test different scanning scenarios:
+- Large codebases with lazy scanner
+- Various file types and extensions
+- Ignore folder functionality
+- File size limits
