@@ -64,16 +64,17 @@ class AIProcessor:
     This class maintains backward compatibility with the existing API.
     """
     
-    def __init__(self, api_key: str = "", provider: str = "openrouter"):
+    def __init__(self, provider: BaseAIProvider):
         """
-        Initialize AI processor with specified provider.
+        Initialize AI processor with a provider instance.
         
         Args:
-            api_key: API key for the provider
-            provider: Provider name ('openrouter', 'tachyon')
+            provider: An instance of a class that extends BaseAIProvider
         """
-        self.provider_name = provider
-        self._provider = AIProviderFactory.create_provider(provider, api_key)
+        if not isinstance(provider, BaseAIProvider):
+            raise ValueError("provider must be an instance of BaseAIProvider")
+        self._provider = provider
+        self.provider_name = provider.get_provider_name()
     
     @property
     def api_key(self) -> str:
@@ -225,4 +226,5 @@ def create_ai_processor(api_key: str = "", provider: str = "openrouter") -> AIPr
     Returns:
         AI processor instance
     """
-    return AIProcessor(api_key, provider)
+    provider_instance = AIProviderFactory.create_provider(provider, api_key)
+    return AIProcessor(provider_instance)

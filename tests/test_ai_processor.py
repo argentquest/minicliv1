@@ -131,7 +131,7 @@ class TestAIProcessor:
         """Test creating system message."""
         processor = AIProcessor("test-key", "openrouter")
         
-        with patch('ai.system_message_manager') as mock_manager:
+        with patch('base_ai.system_message_manager') as mock_manager:
             mock_manager.get_system_message.return_value = "Test system message"
             
             message = processor.create_system_message("codebase content")
@@ -279,7 +279,7 @@ class TestBaseAIProviderIntegration:
         
         processor = AIProcessor("test-key", "openrouter")
         
-        with patch('ai.system_message_manager') as mock_manager:
+        with patch('base_ai.system_message_manager') as mock_manager:
             mock_manager.get_system_message.return_value = "System message"
             
             result = processor.process_question(
@@ -328,7 +328,7 @@ class TestBaseAIProviderIntegration:
                 model="gpt-3.5-turbo"
             )
         
-        assert "Connection error" in str(exc_info.value)
+        assert "Connection failed after multiple retries" in str(exc_info.value)
     
     def test_process_question_no_api_key(self):
         """Test question processing without API key."""

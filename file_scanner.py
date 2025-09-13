@@ -28,8 +28,11 @@ class CodebaseScanner:
         Returns:
             List of file paths found in the directory
         """
-        if not directory or not os.path.exists(directory):
-            return []
+        if not directory:
+            raise Exception("Error scanning directory: No directory specified")
+        
+        if not os.path.exists(directory):
+            raise Exception(f"Error scanning directory: Directory does not exist: {directory}")
             
         files = []
         

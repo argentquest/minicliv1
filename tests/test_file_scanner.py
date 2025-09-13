@@ -197,7 +197,6 @@ class TestCodebaseScanner:
         (".py", True),
         (".js", False),
         (".txt", False),
-        (".env", True),
     ])
     def test_supported_extensions(self, temp_dir, extension, should_find):
         """Test that scanner only finds supported extensions."""
@@ -212,3 +211,16 @@ class TestCodebaseScanner:
             assert any(f.endswith(extension) for f in files)
         else:
             assert not any(f.endswith(extension) for f in files)
+    
+    def test_special_files(self, temp_dir):
+        """Test that scanner finds special files by exact name."""
+        scanner = CodebaseScanner()
+        
+        # Create .env file (exact name match)
+        env_file = Path(temp_dir) / ".env"
+        env_file.write_text("API_KEY=test")
+        
+        files = scanner.scan_directory(temp_dir)
+        
+        assert any(f.endswith(".env") for f in files)
+        assert ".env" in [Path(f).name for f in files]

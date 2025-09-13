@@ -40,7 +40,7 @@
   nosetests.xml
   coverage.xml
   *.cover
-  *.py,cover
+  *.py.cover
   .hypothesis/
   .pytest_cache/
   cover/
@@ -78,7 +78,12 @@
   .claude/
 
   # MyPy
-  .mypy_cache/
   .dmypy.json
   dmypy.json
 
+  # Application specific
+  results/
+  logs/
+
+  # Environment files (keep .envTemplate for reference)
+  .env

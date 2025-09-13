@@ -20,6 +20,7 @@ and as part of the larger application's configuration system.
 import os
 from typing import Dict, List, Tuple, Optional
 import re
+from env_validator import env_validator
 
 class EnvManager:
     """
@@ -216,32 +217,38 @@ TOOL_STYLEGUIDE="Please check if the following code conforms to the PEP 8 style 
         }
     
     def validate_env_var(self, key: str, value: str) -> Tuple[bool, str]:
-        """Validate an environment variable value."""
-        if key == 'MAX_TOKENS':
-            try:
-                tokens = int(value)
-                if tokens < 1 or tokens > 4000:
-                    return False, "MAX_TOKENS must be between 1 and 4000"
-            except ValueError:
-                return False, "MAX_TOKENS must be a number"
+        """Validate an environment variable value using the comprehensive validator."""
+        result = env_validator.validate(key, value)
+        return result.is_valid, result.error_message
+    
+    def validate_all_env_vars(self, env_vars: Dict[str, str]) -> Dict[str, Tuple[bool, str]]:
+        """Validate all environment variables and return results."""
+        validation_results = env_validator.validate_all(env_vars)
         
-        elif key == 'TEMPERATURE':
-            try:
-                temp = float(value)
-                if temp < 0.0 or temp > 1.0:
-                    return False, "TEMPERATURE must be between 0.0 and 1.0"
-            except ValueError:
-                return False, "TEMPERATURE must be a decimal number"
+        # Convert to legacy format for backwards compatibility
+        results = {}
+        for var_name, result in validation_results.items():
+            results[var_name] = (result.is_valid, result.error_message)
         
-        elif key == 'UI_THEME':
-            if value.lower() not in ['light', 'dark']:
-                return False, "UI_THEME must be 'light' or 'dark'"
+        return results
+    
+    def get_validation_summary(self, env_vars: Dict[str, str]) -> Dict:
+        """Get a comprehensive validation summary."""
+        validation_results = env_validator.validate_all(env_vars)
+        return env_validator.get_validation_summary(validation_results)
+    
+    def get_validation_suggestions(self, env_vars: Dict[str, str]) -> List[str]:
+        """Get validation suggestions for improvement."""
+        validation_results = env_validator.validate_all(env_vars)
+        suggestions = []
         
-        elif key == 'API_KEY':
-            if not value.strip():
-                return False, "API_KEY cannot be empty"
+        for var_name, result in validation_results.items():
+            if result.suggestion:
+                suggestions.append(f"{var_name}: {result.suggestion}")
+            elif result.warning_message:
+                suggestions.append(f"{var_name}: {result.warning_message}")
         
-        return True, ""
+        return suggestions
     
     def update_single_var(self, key: str, value: str) -> bool:
         """Update a single environment variable and save to file."""
