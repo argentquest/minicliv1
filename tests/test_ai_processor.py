@@ -7,8 +7,8 @@ import requests
 
 from ai import AIProcessor, AIProviderFactory
 from base_ai import BaseAIProvider, AIProviderConfig
-from openrouter_provider import OpenRouterProvider
-from tachyon_provider import TachyonProvider
+from providers.openrouter_provider import OpenRouterProvider
+from providers.tachyon_provider import TachyonProvider
 
 
 class TestAIProviderFactory:
@@ -62,7 +62,9 @@ class TestAIProviderFactory:
         assert isinstance(provider, TestProvider)
         
         # Clean up
-        del AIProviderFactory.PROVIDERS["test"]
+        # Remove from static providers for testing
+        if "test" in AIProviderFactory._STATIC_PROVIDERS:
+            del AIProviderFactory._STATIC_PROVIDERS["test"]
     
     def test_register_provider_invalid_class(self):
         """Test registering provider with invalid class."""
@@ -79,57 +81,65 @@ class TestAIProcessor:
     
     def test_init_default(self):
         """Test AIProcessor initialization with defaults."""
-        processor = AIProcessor("test-key", "openrouter")
+        provider = OpenRouterProvider("test-key")
+        processor = AIProcessor(provider)
         assert processor.api_key == "test-key"
         assert processor.provider == "openrouter"
         assert isinstance(processor._provider, OpenRouterProvider)
     
     def test_set_api_key(self):
         """Test setting API key."""
-        processor = AIProcessor("", "openrouter")
+        provider = OpenRouterProvider("")
+        processor = AIProcessor(provider)
         processor.set_api_key("new-key")
         assert processor.api_key == "new-key"
         assert processor._provider.api_key == "new-key"
     
     def test_set_provider(self):
         """Test switching providers."""
-        processor = AIProcessor("test-key", "openrouter")
+        provider = OpenRouterProvider("test-key")
+        processor = AIProcessor(provider)
         processor.set_provider("tachyon")
-        
+
         assert processor.provider == "tachyon"
         assert isinstance(processor._provider, TachyonProvider)
         assert processor.api_key == "test-key"  # Should preserve API key
     
     def test_validate_api_key_valid(self):
         """Test API key validation with valid key."""
-        processor = AIProcessor("test-key", "openrouter")
+        provider = OpenRouterProvider("test-key")
+        processor = AIProcessor(provider)
         assert processor.validate_api_key() is True
-    
+
     def test_validate_api_key_empty(self):
         """Test API key validation with empty key."""
-        processor = AIProcessor("", "openrouter")
+        provider = OpenRouterProvider("")
+        processor = AIProcessor(provider)
         assert processor.validate_api_key() is False
-    
+
     def test_get_provider_info(self):
         """Test getting provider information."""
-        processor = AIProcessor("test-key", "openrouter")
+        provider = OpenRouterProvider("test-key")
+        processor = AIProcessor(provider)
         info = processor.get_provider_info()
-        
+
         assert info["name"] == "openrouter"
         assert info["has_api_key"] is True
         assert "api_url" in info
         assert "supports_tokens" in info
-    
+
     def test_get_provider_info_different_provider(self):
         """Test getting information for different provider."""
-        processor = AIProcessor("test-key", "openrouter")
+        provider = OpenRouterProvider("test-key")
+        processor = AIProcessor(provider)
         info = processor.get_provider_info("tachyon")
-        
+
         assert info["name"] == "tachyon"
-    
+
     def test_create_system_message(self):
         """Test creating system message."""
-        processor = AIProcessor("test-key", "openrouter")
+        provider = OpenRouterProvider("test-key")
+        processor = AIProcessor(provider)
         
         with patch('base_ai.system_message_manager') as mock_manager:
             mock_manager.get_system_message.return_value = "Test system message"
@@ -277,18 +287,19 @@ class TestBaseAIProviderIntegration:
         }
         mock_post.return_value = mock_response
         
-        processor = AIProcessor("test-key", "openrouter")
-        
+        provider = OpenRouterProvider("test-key")
+        processor = AIProcessor(provider)
+
         with patch('base_ai.system_message_manager') as mock_manager:
             mock_manager.get_system_message.return_value = "System message"
-            
+
             result = processor.process_question(
                 question="Test question",
                 conversation_history=[],
                 codebase_content="test code",
                 model="gpt-3.5-turbo"
             )
-            
+
             assert result == "AI response"
             mock_post.assert_called_once()
     
@@ -301,8 +312,9 @@ class TestBaseAIProviderIntegration:
         mock_response.text = "Unauthorized"
         mock_post.return_value = mock_response
         
-        processor = AIProcessor("test-key", "openrouter")
-        
+        provider = OpenRouterProvider("test-key")
+        processor = AIProcessor(provider)
+
         with pytest.raises(Exception) as exc_info:
             processor.process_question(
                 question="Test question",
@@ -310,7 +322,7 @@ class TestBaseAIProviderIntegration:
                 codebase_content="test code",
                 model="gpt-3.5-turbo"
             )
-        
+
         assert "invalid or expired" in str(exc_info.value)
     
     @patch('requests.post')
@@ -318,8 +330,9 @@ class TestBaseAIProviderIntegration:
         """Test question processing with connection error."""
         mock_post.side_effect = requests.exceptions.ConnectionError()
         
-        processor = AIProcessor("test-key", "openrouter")
-        
+        provider = OpenRouterProvider("test-key")
+        processor = AIProcessor(provider)
+
         with pytest.raises(Exception) as exc_info:
             processor.process_question(
                 question="Test question",
@@ -327,12 +340,13 @@ class TestBaseAIProviderIntegration:
                 codebase_content="test code",
                 model="gpt-3.5-turbo"
             )
-        
+
         assert "Connection failed after multiple retries" in str(exc_info.value)
-    
+
     def test_process_question_no_api_key(self):
         """Test question processing without API key."""
-        processor = AIProcessor("", "openrouter")
+        provider = OpenRouterProvider("")
+        processor = AIProcessor(provider)
         
         with pytest.raises(Exception) as exc_info:
             processor.process_question(

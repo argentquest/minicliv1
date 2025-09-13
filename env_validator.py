@@ -65,10 +65,15 @@ class EnvValidator:
                      "OpenRouter API key (sk-or-...)", 
                      "api")
         
-        self.add_rule('PROVIDER', 
-                     lambda v: self._validate_enum(v, {'openrouter', 'tachyon', 'custom'}),
-                     "AI provider (openrouter, tachyon, custom)", 
-                     "api")
+        self.add_rule('PROVIDER',
+                      lambda v: self._validate_enum(v, {'openrouter', 'tachyon', 'custom'}),
+                      "AI provider (openrouter, tachyon, custom)",
+                      "api")
+
+        self.add_rule('PROVIDERS',
+                      self._validate_provider_list,
+                      "Comma-separated list of available AI providers",
+                      "api")
         
         # Model Configuration
         self.add_rule('DEFAULT_MODEL', 
@@ -170,6 +175,17 @@ class EnvValidator:
                       self._validate_save_directory,
                       "Directory for saving analysis results (defaults to 'results')",
                       "output")
+
+        # FastAPI Server Configuration
+        self.add_rule('API_PORT',
+                      lambda v: self._validate_int_range(v, 1, 65535),
+                      "Port number for FastAPI server (1-65535, default: 8000)",
+                      "server")
+
+        self.add_rule('API_HOST',
+                      self._validate_host_address,
+                      "Host address for FastAPI server (IP address or hostname, default: 0.0.0.0)",
+                      "server")
     
     def _setup_tool_command_rules(self):
         """Set up validation rules for tool commands."""
@@ -568,7 +584,61 @@ class EnvValidator:
 
         except Exception as e:
             return False, f"Invalid save directory path: {str(e)}"
-    
+
+    def _validate_provider_list(self, value: str) -> Tuple[bool, str]:
+        """Validate comma-separated list of AI providers."""
+        if not value.strip():
+            return False, "Provider list cannot be empty"
+
+        providers = [p.strip() for p in value.split(',') if p.strip()]
+
+        if not providers:
+            return False, "No valid providers found in list"
+
+        # Check for valid provider names (should match class names in providers/)
+        valid_providers = {'openrouter', 'tachyon', 'custom'}
+        invalid_providers = []
+
+        for provider in providers:
+            if provider not in valid_providers:
+                invalid_providers.append(provider)
+
+        if invalid_providers:
+            return False, f"Invalid providers: {', '.join(invalid_providers)}. Valid options: {', '.join(valid_providers)}"
+
+        # Check for duplicates
+        if len(providers) != len(set(providers)):
+            return False, "Provider list contains duplicates"
+
+        return True, ""
+
+    def _validate_host_address(self, value: str) -> Tuple[bool, str]:
+        """Validate host address for FastAPI server."""
+        if not value.strip():
+            return True, ""  # Optional - will use default
+
+        # Allow localhost, IP addresses, and hostnames
+        import ipaddress
+        import socket
+
+        # Check if it's a valid IP address
+        try:
+            ipaddress.ip_address(value)
+            return True, ""
+        except ValueError:
+            pass
+
+        # Check if it's localhost or a valid hostname
+        if value.lower() in ['localhost', '127.0.0.1', '::1', '0.0.0.0']:
+            return True, ""
+
+        # Try to resolve as hostname
+        try:
+            socket.gethostbyname(value)
+            return True, ""
+        except socket.gaierror:
+            return False, f"Invalid host address: {value}. Use IP address, localhost, or valid hostname"
+
     def _generate_suggestion(self, var_name: str, value: str, error_msg: str) -> str:
         """Generate helpful suggestions for common validation errors."""
         suggestions = {
@@ -581,7 +651,9 @@ class EnvValidator:
             'WINDOW_SIZE': "Use format like '1200x800' for a 1200px wide by 800px tall window",
             'LOG_LEVEL': "Use DEBUG for development, INFO for normal operation, WARNING/ERROR for production",
             'LOG_DIR': "Use a relative path like 'logs' or absolute path like '/var/log/minicli'",
-            'DIR_SAVE': "Use a relative path like 'results' or 'output' for saving analysis results"
+            'DIR_SAVE': "Use a relative path like 'results' or 'output' for saving analysis results",
+            'API_PORT': "Use port 8000 for development, or any available port between 1024-65535 for production",
+            'API_HOST': "Use '0.0.0.0' to accept connections from all interfaces, or '127.0.0.1' for localhost only"
         }
         
         if var_name in suggestions:

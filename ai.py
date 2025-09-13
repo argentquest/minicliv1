@@ -1,61 +1,159 @@
 """
-AI processing utilities for the Code Chat application.
-Refactored to use provider pattern for better separation of concerns.
+AI Processing Module for Code Chat with AI
+
+This module implements the AI processing functionality for the Code Chat
+application using a provider pattern architecture for better separation
+of concerns and extensibility.
+
+Architecture Overview:
+- AIProviderFactory: Factory class for creating provider instances
+- AIProcessor: Main processor class that maintains backward compatibility
+- BaseAIProvider: Abstract base class that all providers must extend
+- Provider implementations: OpenRouterProvider, TachyonProvider, etc.
+
+The provider pattern allows:
+- Easy addition of new AI providers without modifying core logic
+- Consistent interface across different AI services
+- Provider-specific optimizations and configurations
+- Secure API key management and validation
+- Comprehensive error handling and debugging
+
+Key Features:
+- Multiple AI provider support (OpenAI, Anthropic, etc.)
+- Asynchronous processing with callbacks
+- Secure API key validation and masking
+- Conversation history management
+- Model selection and configuration
+- Debug information with sensitive data protection
+
+Usage:
+    # Create processor with default provider
+    processor = create_ai_processor(api_key="your_key")
+
+    # Create processor with specific provider
+    processor = create_ai_processor(api_key="your_key", provider="tachyon")
+
+    # Process a question
+    response = processor.process_question(
+        question="Explain this code",
+        conversation_history=[],
+        codebase_content="...",
+        model="gpt-4"
+    )
 """
-from typing import List, Dict, Any, Callable, Optional, Union
+from typing import List, Dict, Any, Callable, Optional
 from base_ai import BaseAIProvider
-from openrouter_provider import OpenRouterProvider
-from tachyon_provider import TachyonProvider
+from providers.openrouter_provider import OpenRouterProvider
+from providers.tachyon_provider import TachyonProvider
+from providers.custom_provider import CustomProvider
 
 
 class AIProviderFactory:
     """Factory class for creating AI provider instances."""
-    
-    PROVIDERS = {
+
+    # Static mapping of provider names to classes (for fallback)
+    _STATIC_PROVIDERS = {
         "openrouter": OpenRouterProvider,
-        "tachyon": TachyonProvider
+        "tachyon": TachyonProvider,
+        "custom": CustomProvider
     }
+
+    @classmethod
+    def _get_dynamic_providers(cls) -> Dict[str, type]:
+        """Get providers dynamically from environment configuration."""
+        import os
+
+        # Get providers list from environment
+        providers_env = os.getenv("PROVIDERS", "")
+        if not providers_env.strip():
+            # Fallback to static providers if not configured
+            return cls._STATIC_PROVIDERS.copy()
+
+        # Parse provider list
+        provider_names = [p.strip() for p in providers_env.split(',') if p.strip()]
+
+        # Build dynamic provider mapping
+        dynamic_providers = {}
+
+        for provider_name in provider_names:
+            if provider_name in cls._STATIC_PROVIDERS:
+                dynamic_providers[provider_name] = cls._STATIC_PROVIDERS[provider_name]
+            else:
+                # Try to dynamically import custom providers
+                try:
+                    # Import from providers package
+                    module_name = f"providers.{provider_name}_provider"
+                    class_name = f"{provider_name.title()}Provider"
+
+                    import importlib
+                    module = importlib.import_module(module_name)
+                    provider_class = getattr(module, class_name)
+
+                    # Verify it's a valid provider class
+                    if (hasattr(provider_class, '__bases__') and
+                        any('BaseAIProvider' in str(base) for base in provider_class.__bases__)):
+                        dynamic_providers[provider_name] = provider_class
+                    else:
+                        print(f"Warning: {class_name} is not a valid AI provider class")
+
+                except (ImportError, AttributeError) as e:
+                    print(f"Warning: Could not load provider '{provider_name}': {e}")
+                    print(f"Make sure {provider_name}_provider.py exists in providers/ directory")
+
+        # If no valid providers found, fallback to static
+        if not dynamic_providers:
+            print("Warning: No valid providers found in PROVIDERS environment variable")
+            return cls._STATIC_PROVIDERS.copy()
+
+        return dynamic_providers
+
+    @classmethod
+    def _get_providers(cls) -> Dict[str, type]:
+        """Get the current provider mapping (dynamic or static)."""
+        return cls._get_dynamic_providers()
     
     @classmethod
     def create_provider(cls, provider_name: str, api_key: str = "") -> BaseAIProvider:
         """
         Create an AI provider instance.
-        
+
         Args:
-            provider_name: Name of the provider ('openrouter', 'tachyon')
+            provider_name: Name of the provider ('openrouter', 'tachyon', 'custom')
             api_key: API key for the provider
-            
+
         Returns:
             AI provider instance
-            
+
         Raises:
             ValueError: If provider is not supported
         """
-        if provider_name not in cls.PROVIDERS:
-            available = ", ".join(cls.PROVIDERS.keys())
+        providers = cls._get_providers()
+        if provider_name not in providers:
+            available = ", ".join(providers.keys())
             raise ValueError(f"Unsupported provider '{provider_name}'. Available: {available}")
-        
-        provider_class = cls.PROVIDERS[provider_name]
+
+        provider_class = providers[provider_name]
         return provider_class(api_key)
     
     @classmethod
     def get_available_providers(cls) -> List[str]:
         """Get list of available AI providers."""
-        return list(cls.PROVIDERS.keys())
+        return list(cls._get_providers().keys())
     
     @classmethod
     def register_provider(cls, name: str, provider_class: type):
         """
         Register a new AI provider.
-        
+
         Args:
             name: Provider name
             provider_class: Provider class that extends BaseAIProvider
         """
         if not issubclass(provider_class, BaseAIProvider):
             raise ValueError("Provider class must extend BaseAIProvider")
-        
-        cls.PROVIDERS[name] = provider_class
+
+        # Add to static providers for future use
+        cls._STATIC_PROVIDERS[name] = provider_class
 
 
 class AIProcessor:

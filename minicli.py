@@ -1,60 +1,121 @@
 """
-Simplified modern version of the Code Chat application with better compatibility.
+Code Chat with AI - Modern Desktop Application
+
+This module implements the main GUI application for Code Chat with AI,
+a desktop application that enables users to chat with AI models about
+their codebase. The application provides:
+
+- Modern tabbed interface with conversation history management
+- Advanced codebase scanning with lazy loading for large projects
+- Support for multiple AI providers (OpenAI, Anthropic, etc.)
+- Customizable system messages for different analysis types
+- Secure API key management and environment configuration
+- Theme support (light/dark) with modern UI components
+- File selection and persistent context across conversation turns
+- Conversation history save/load functionality
+
+The application supports three modes:
+- GUI mode (default): Full graphical interface
+- CLI mode (--cli): Command-line interface for automation
+- Rich CLI mode (--rich-cli): Enhanced CLI with progress bars
+
+Architecture:
+- Uses Tkinter for the GUI framework
+- Implements MVC pattern with UIController managing interface components
+- Supports both standard and lazy file scanning for performance optimization
+- Threaded processing for non-blocking AI interactions
+- Comprehensive error handling and user feedback
 """
+
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import filedialog
 import os
 import threading
 from pathlib import Path
 from typing import List
 from dotenv import load_dotenv
 
-# Initialize logging first
-from logger import get_logger, with_context, log_performance, app_logger
+# Initialize logging first for proper error tracking
+from logger import get_logger, log_performance
 
+# Core application models and state management
 from models import AppState, AppConfig, ConversationMessage
+
+# File scanning components for codebase analysis
 from lazy_file_scanner import CodebaseScanner, LazyCodebaseScanner
-from ai import AIProcessor, create_ai_processor
+
+# AI processing and provider management
+from ai import create_ai_processor
+
+# UI theming and icon management
 from theme import theme_manager
-from icons import icon_manager
+
+# UI components and dialogs
 from simple_modern_ui import show_simple_toast
 from env_settings_dialog import EnvSettingsDialog
-from env_manager import env_manager
 from system_message_dialog import SystemMessageDialog
 from system_message_manager import system_message_manager
+
+# Main UI controller for interface management
 from ui_controller import UIController
 
 class SimpleModernCodeChatApp:
-    """Simplified modern version of the Code Chat application."""
+    """
+    Main application class for Code Chat with AI.
+
+    This class orchestrates the entire application functionality including:
+    - GUI initialization and window management
+    - AI provider setup and configuration
+    - Codebase scanning and file selection
+    - Conversation management and history tracking
+    - User interaction handling and UI updates
+    - Settings management and theme switching
+
+    The application uses a component-based architecture with separate controllers
+    for UI management, AI processing, and file scanning to maintain clean
+    separation of concerns and improve maintainability.
+    """
     
     def __init__(self, root: tk.Tk):
+        """
+        Initialize the Code Chat application.
+
+        Sets up all core components including logging, configuration,
+        UI management, AI processing, and codebase scanning. This method
+        orchestrates the complete application initialization process.
+
+        Args:
+            root: The main Tkinter window for the application
+        """
         self.root = root
         self.logger = get_logger("app")
         self.config = AppConfig.get_default()
         self.state = AppState()
         self.scanner = CodebaseScanner()
-        self.lazy_scanner = None  # Will be created when needed for large codebases
-        
+        self.lazy_scanner = None  # Created on-demand for large codebases
+
         # Load environment and initialize components
         self.logger.info("Initializing Code Chat application")
         self.logger.set_context(component="app", operation="initialization")
         self._load_environment()
-        
+
         # Reload theme preference after dotenv loads .env file
         theme_manager._load_theme_preference()
-        
-        # Initialize UI controller
+
+        # Initialize UI controller with available models
         self.ui_controller = UIController(self.root, self.state, self.models)
         self._setup_ui_callbacks()
-        
+
         # Setup window and UI
         self.ui_controller.setup_window()
         self.ui_controller.create_ui()
-        
+
         # Initialize AI processor with provider from environment
         ai_provider_name = os.getenv("PROVIDER", "openrouter")
-        self.ai_processor = create_ai_processor(self.state.api_key, ai_provider_name)
-        
+        self.ai_processor = create_ai_processor(
+            self.state.api_key, ai_provider_name
+        )
+
         # Set initial status
         self._update_initial_status()
     
@@ -796,11 +857,53 @@ class SimpleModernCodeChatApp:
 
 
 def main():
-    """Main entry point - handles CLI, Rich CLI, and GUI modes."""
+    """Main entry point - handles CLI, Rich CLI, GUI, and Server modes."""
     import sys
-    
+
+    # Check if server mode is requested
+    if '--server' in sys.argv:
+        try:
+            # Remove --server from args and launch FastAPI server
+            sys.argv.remove('--server')
+            from fastapi_server import app
+            import uvicorn
+            import os
+
+            # Get port from environment or command line
+            port = 8000
+            if '--port' in sys.argv:
+                port_idx = sys.argv.index('--port')
+                if port_idx + 1 < len(sys.argv):
+                    port = int(sys.argv[port_idx + 1])
+                    sys.argv.pop(port_idx + 1)
+                    sys.argv.pop(port_idx)
+
+            port = int(os.getenv("API_PORT", port))
+            host = os.getenv("API_HOST", "0.0.0.0")
+
+            print(f"Starting FastAPI server on {host}:{port}")
+            print(f"API documentation available at: http://{host}:{port}/docs")
+
+            uvicorn.run(
+                "fastapi_server:app",
+                host=host,
+                port=port,
+                reload=True,
+                log_level="info"
+            )
+        except ImportError as e:
+            print(f"ERROR: FastAPI server dependencies not available: {e}", file=sys.stderr)
+            print("Please install: pip install fastapi uvicorn pydantic", file=sys.stderr)
+            sys.exit(1)
+        except KeyboardInterrupt:
+            print("\nServer stopped by user.", file=sys.stderr)
+            sys.exit(0)
+        except Exception as e:
+            print(f"ERROR: Server error: {str(e)}", file=sys.stderr)
+            sys.exit(1)
+
     # Check if Rich CLI mode is requested
-    if '--rich-cli' in sys.argv:
+    elif '--rich-cli' in sys.argv:
         try:
             # Remove --rich-cli from args and launch Rich CLI
             sys.argv.remove('--rich-cli')
@@ -820,10 +923,10 @@ def main():
     elif '--cli' in sys.argv:
         # Standard CLI mode
         from cli_interface import CLIInterface
-        
+
         cli = CLIInterface()
         parser = cli.setup_argument_parser()
-        
+
         try:
             args = parser.parse_args()
             exit_code = cli.run_cli(args)

@@ -55,8 +55,11 @@ Examples:
                           help='API key (overrides .env file)')
         parser.add_argument('--model', type=str,
                           help='AI model to use (overrides .env DEFAULT_MODEL)')
-        parser.add_argument('--provider', type=str, choices=['openrouter', 'tachyon'],
-                          help='AI provider to use (overrides .env PROVIDER)')
+        # Get available providers dynamically from environment
+        from ai import AIProviderFactory
+        available_providers = AIProviderFactory.get_available_providers()
+        parser.add_argument('--provider', type=str, choices=available_providers,
+                          help=f'AI provider to use (overrides .env PROVIDER). Available: {", ".join(available_providers)}')
         parser.add_argument('--system-prompt', type=str,
                           help='System prompt file to use (e.g., security_expert for systemmessage_security_expert.txt)')
         

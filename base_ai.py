@@ -1,5 +1,40 @@
 """
-Base AI provider classes and interfaces for the Code Chat application.
+Base AI Provider Classes and Interfaces
+
+This module defines the abstract base classes and interfaces for AI providers
+in the Code Chat application. It implements a provider pattern that allows
+different AI services (OpenAI, Anthropic, etc.) to be integrated through
+a consistent interface.
+
+Architecture Overview:
+- AIProviderConfig: Configuration class for provider settings
+- BaseAIProvider: Abstract base class defining the provider interface
+- Provider implementations: Concrete classes extending BaseAIProvider
+
+Key Features:
+- Abstract interface for AI provider implementations
+- Standardized request/response handling
+- Token usage tracking and reporting
+- Secure API key management and validation
+- Comprehensive error handling with retry logic
+- Asynchronous processing support
+- Debug information with sensitive data masking
+
+The BaseAIProvider class defines the contract that all AI providers must
+implement, ensuring consistent behavior across different AI services while
+allowing for provider-specific optimizations and configurations.
+
+Error Handling:
+- Network timeout and connection error handling
+- Automatic retry with exponential backoff
+- Provider-specific error message formatting
+- Secure error logging without exposing sensitive data
+
+Security:
+- API key validation and format checking
+- Sensitive data masking in debug output
+- Secure error message sanitization
+- Provider-specific authentication handling
 """
 import time
 from abc import ABC, abstractmethod

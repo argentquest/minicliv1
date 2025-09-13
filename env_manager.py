@@ -204,6 +204,8 @@ TOOL_STYLEGUIDE="Please check if the following code conforms to the PEP 8 style 
             'MAX_TOKENS': 'Maximum tokens for AI responses (1-4000)',
             'TEMPERATURE': 'AI response creativity (0.0-1.0, higher = more creative)',
             'CURRENT_SYSTEM_PROMPT': 'Currently selected system message file (e.g., systemmessage_security.txt)',
+            'API_PORT': 'Port number for the FastAPI server (default: 8000)',
+            'API_HOST': 'Host address for the FastAPI server (default: 0.0.0.0 for all interfaces)',
             'TOOL_LINT': 'Command to run a linter on the code',
             'TOOL_TEST': 'Command to run unit tests on the code',
             'TOOL_REFACTOR': 'Prompt to ask the AI to refactor the code',

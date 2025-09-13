@@ -126,6 +126,7 @@
 - **Standard CLI** - Command-line interface for automation and scripting
 - **Rich CLI** - Enhanced terminal interface with syntax highlighting and progress bars
 - **Interactive Mode** - Step-by-step guided analysis with smart prompts
+- **API Server** - REST API for programmatic access and integrations
 - **Batch Processing** - Automated analysis of multiple codebases
 
 ### � **Conversation Management**
@@ -319,11 +320,22 @@ code-chat-ai/
     ├── .env                    # Environment configuration
     ├── .envTemplate            # Environment configuration template
     ├── .gitignore              # Git ignore patterns
+    ├── LICENSE                 # MIT license
     ├── AGENTS.md               # Agent development guidelines
     ├── CLI_USAGE.md            # CLI usage documentation
     ├── TESTING_GUIDE.md        # Testing documentation
+    ├── CONTRIBUTING.md         # Contribution guidelines
+    ├── CODE_OF_CONDUCT.md      # Community code of conduct
     ├── README.md               # This file
     └── .roomodes               # Custom mode definitions
+
+📁 .github/                     # GitHub community templates
+├── ISSUE_TEMPLATE/
+│   ├── bug_report.md          # Bug report template
+│   └── feature_request.md     # Feature request template
+├── PULL_REQUEST_TEMPLATE.md   # Pull request template
+└── workflows/
+    └── ci.yml                 # GitHub Actions CI pipeline
 ```
 
 ---
@@ -407,7 +419,40 @@ The Rich CLI provides:
 
 ---
 
-## 🔧 Development
+## 🤝 Community & Contributing
+
+We welcome contributions from the community! Whether you're fixing bugs, adding features, improving documentation, or helping with testing, your help is appreciated.
+
+### 📋 Getting Started with Contributing
+
+1. **Read our guidelines:**
+   - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Detailed contribution guidelines
+   - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** - Community standards
+   - **[AGENTS.md](AGENTS.md)** - Development patterns and architecture
+
+2. **Set up your development environment:**
+   ```bash
+   git clone https://github.com/your-username/code-chat-ai.git
+   cd code-chat-ai
+   pip install -r requirements.txt -r requirements-test.txt
+   ```
+
+3. **Find something to work on:**
+   - Check [GitHub Issues](https://github.com/your-username/code-chat-ai/issues) for open tasks
+   - Look for issues labeled `good first issue` or `help wanted`
+   - Review the [project roadmap](https://github.com/your-username/code-chat-ai/projects)
+
+### 🐛 Reporting Issues
+
+Use our issue templates for:
+- **[Bug Reports](.github/ISSUE_TEMPLATE/bug_report.md)** - Report bugs and errors
+- **[Feature Requests](.github/ISSUE_TEMPLATE/feature_request.md)** - Suggest new features
+
+### 🔄 Pull Requests
+
+All contributions go through pull requests. Use our **[PR Template](.github/PULL_REQUEST_TEMPLATE.md)** to ensure your submission includes all necessary information.
+
+## � Development
 
 ### Requirements
 
@@ -432,14 +477,6 @@ python -m pytest tests/test_env_validator.py -v
 # Run integration tests
 python -m pytest tests/test_integration.py -v
 ```
-
-### Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
 
 ### Code Style
 

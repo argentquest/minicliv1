@@ -800,19 +800,56 @@ class RichCLIInterface:
                 else:
                     console.print("[red]Please enter a more detailed question or select a template.[/red]")
     
+    def interactive_provider_selection(self, available_providers: List[str]) -> Optional[str]:
+        """Interactive provider selection with .env defaults."""
+        if not available_providers:
+            return None
+
+        console.print("\n[cyan]Select AI Provider[/cyan]")
+        console.print("[dim]Choose the AI provider for analysis[/dim]")
+
+        # Show current default provider from .env
+        default_provider = os.getenv("PROVIDER", "openrouter")
+        if default_provider:
+            console.print(f"[green]Current default:[/green] {default_provider}")
+
+        # Display available providers in a nice format
+        console.print("\n[yellow]Available Providers:[/yellow]")
+        for i, provider in enumerate(available_providers, 1):
+            status = " [green](CURRENT)[/green]" if provider == default_provider else ""
+            console.print(f"  {i}. [cyan]{provider.title()}[/cyan]{status}")
+
+        # Add default option
+        console.print(f"  {len(available_providers) + 1}. [dim]Use current default ({default_provider})[/dim]")
+
+        while True:
+            choice = Prompt.ask(
+                f"\n[bold]Select provider (1-{len(available_providers) + 1})[/bold]",
+                default=str(len(available_providers) + 1)
+            )
+
+            if choice.isdigit():
+                choice_num = int(choice)
+                if 1 <= choice_num <= len(available_providers):
+                    return available_providers[choice_num - 1]
+                elif choice_num == len(available_providers) + 1:
+                    return None  # Use default
+
+            console.print("[red]Invalid selection. Please try again.[/red]")
+
     def interactive_model_selection(self, available_models: List[str]) -> Optional[str]:
         """Interactive model selection with .env defaults."""
         if not available_models:
             return None
-            
+
         console.print("\n[cyan]Select AI Model[/cyan]")
         console.print("[dim]Choose the AI model for analysis[/dim]")
-        
+
         # Show current default model from .env
         default_model = os.getenv("DEFAULT_MODEL")
         if default_model:
             console.print(f"[green]Current default:[/green] {default_model}")
-        
+
         # Display available models in a nice format
         console.print("\n[yellow]Available Models:[/yellow]")
         for i, model in enumerate(available_models[:10], 1):  # Show first 10 models
@@ -820,23 +857,23 @@ class RichCLIInterface:
             model_name = model.split('/')[-1] if '/' in model else model
             status = " [green](CURRENT)[/green]" if model == default_model else ""
             console.print(f"  {i}. [cyan]{model_name}[/cyan] [dim]({provider}){status}[/dim]")
-        
+
         # Add default option
         console.print(f"  {len(available_models) + 1}. [dim]Use current default ({default_model or 'from .env'})[/dim]")
-        
+
         while True:
             choice = Prompt.ask(
                 f"\n[bold]Select model (1-{len(available_models) + 1})[/bold]",
                 default=str(len(available_models) + 1)
             )
-            
+
             if choice.isdigit():
                 choice_num = int(choice)
                 if 1 <= choice_num <= len(available_models):
                     return available_models[choice_num - 1]
                 elif choice_num == len(available_models) + 1:
                     return None  # Use default
-            
+
             console.print("[red]Invalid selection. Please try again.[/red]")
     
     def interactive_options_selection(self) -> Dict[str, Any]:
@@ -954,7 +991,8 @@ def analyze(
     # AI Configuration
     api_key: Optional[str] = typer.Option(None, "--api-key", "-k", help="API key (overrides .env file)"),
     model: Optional[str] = typer.Option(None, "--model", "-m", help="AI model to use"),
-    provider: Optional[str] = typer.Option(None, "--provider", "-p", help="AI provider (openrouter, tachyon)"),
+    provider: Optional[str] = typer.Option(None, "--provider", "-p",
+                                         help="AI provider (dynamically loaded from PROVIDERS env var)"),
     system_prompt: Optional[str] = typer.Option(None, "--system-prompt", "-s", help="System prompt name (e.g., 'security_expert')"),
     
     # File Filtering
@@ -1025,6 +1063,15 @@ def analyze(
     config = cli_interface.load_configuration(api_key, provider, model)
     cli_interface.print_config_summary(config)
     
+    # Interactive provider selection if not specified
+    if provider is None:
+        from ai import AIProviderFactory
+        available_providers = AIProviderFactory.get_available_providers()
+        if len(available_providers) > 1:  # Only show if multiple providers available
+            selected_provider = cli_interface.interactive_provider_selection(available_providers)
+            if selected_provider:
+                config['provider'] = selected_provider
+
     # Interactive model selection if not specified
     if model is None and config.get('models'):
         model = cli_interface.interactive_model_selection(config['models'])

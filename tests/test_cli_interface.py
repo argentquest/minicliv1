@@ -162,7 +162,13 @@ class TestCLIInterface:
             
             assert result is True
             assert cli.ai_processor == mock_processor
-            mock_ai_processor_class.assert_called_once_with('sk-test123', 'openrouter')
+            # The AIProcessor now takes a provider instance, not separate api_key and provider
+            # So we need to check that it was called with the correct provider instance
+            mock_ai_processor_class.assert_called_once()
+            call_args = mock_ai_processor_class.call_args[0][0]  # Get the first positional argument
+            assert hasattr(call_args, 'api_key')
+            assert call_args.api_key == 'sk-test123'
+            assert call_args.get_provider_name() == 'openrouter'
     
     def test_setup_ai_processor_invalid_key(self, capsys):
         """Test AI processor setup with invalid API key."""

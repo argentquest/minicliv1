@@ -20,6 +20,11 @@ OPENROUTER_API_KEY=""
 # Options: openrouter, tachyon, custom
 PROVIDER="openrouter"
 
+# Available AI Providers - comma-separated list of provider names
+# These must match the provider class names in the providers/ directory
+# Add new providers here without code changes
+PROVIDERS="openrouter,tachyon,custom"
+
 # API URLs (usually don't need to change these)
 API_URL="https://api.openrouter.ai/v1/chat/completions"
 TOKEN_URL="https://api.openrouter.ai/v1/token"
@@ -139,6 +144,17 @@ CACHE_SIZE="100"
 
 # API request timeout in seconds (1-300)
 REQUEST_TIMEOUT="60"
+
+# =============================================================================
+# 🌐 FASTAPI SERVER CONFIGURATION
+# =============================================================================
+
+# Port for the FastAPI server (default: 8000)
+API_PORT="8000"
+
+# Host for the FastAPI server (default: 0.0.0.0 for all interfaces)
+API_HOST="0.0.0.0"
+
 # =============================================================================
 # 🔍 VALIDATION NOTES
 # =============================================================================
