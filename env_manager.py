@@ -206,6 +206,8 @@ TOOL_STYLEGUIDE="Please check if the following code conforms to the PEP 8 style 
             'CURRENT_SYSTEM_PROMPT': 'Currently selected system message file (e.g., systemmessage_security.txt)',
             'API_PORT': 'Port number for the FastAPI server (default: 8000)',
             'API_HOST': 'Host address for the FastAPI server (default: 0.0.0.0 for all interfaces)',
+            'FASTAPI_URL': 'Backend URL for frontend (default: http://localhost:8000)',
+            'WEB_PORT': 'Port number for NiceGUI web server (default: 8080)',
             'TOOL_LINT': 'Command to run a linter on the code',
             'TOOL_TEST': 'Command to run unit tests on the code',
             'TOOL_REFACTOR': 'Prompt to ask the AI to refactor the code',

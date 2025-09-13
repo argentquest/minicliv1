@@ -178,14 +178,25 @@ class EnvValidator:
 
         # FastAPI Server Configuration
         self.add_rule('API_PORT',
-                      lambda v: self._validate_int_range(v, 1, 65535),
-                      "Port number for FastAPI server (1-65535, default: 8000)",
-                      "server")
+                       lambda v: self._validate_int_range(v, 1, 65535),
+                       "Port number for FastAPI server (1-65535, default: 8000)",
+                       "server")
 
         self.add_rule('API_HOST',
-                      self._validate_host_address,
-                      "Host address for FastAPI server (IP address or hostname, default: 0.0.0.0)",
-                      "server")
+                       self._validate_host_address,
+                       "Host address for FastAPI server (IP address or hostname, default: 0.0.0.0)",
+                       "server")
+
+        # Web Application Configuration
+        self.add_rule('FASTAPI_URL',
+                       self._validate_fastapi_url,
+                       "Backend URL for frontend (e.g., http://localhost:8000)",
+                       "web")
+
+        self.add_rule('WEB_PORT',
+                       lambda v: self._validate_int_range(v, 1, 65535),
+                       "Port number for NiceGUI web server (1-65535, default: 8080)",
+                       "web")
     
     def _setup_tool_command_rules(self):
         """Set up validation rules for tool commands."""
@@ -639,6 +650,49 @@ class EnvValidator:
         except socket.gaierror:
             return False, f"Invalid host address: {value}. Use IP address, localhost, or valid hostname"
 
+    def _validate_fastapi_url(self, value: str) -> Tuple[bool, str]:
+        """Validate FastAPI URL for frontend backend connection."""
+        if not value.strip():
+            return True, ""  # Optional - will use default
+
+        # Check if it's a valid URL
+        import re
+        from urllib.parse import urlparse
+
+        # Basic URL pattern validation
+        url_pattern = re.compile(
+            r'^https?://'  # http:// or https://
+            r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'  # domain...
+            r'localhost|'  # localhost...
+            r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
+            r'(?::\d+)?'  # optional port
+            r'(?:/?|[/?]\S+)$', re.IGNORECASE)  # path
+
+        if not url_pattern.match(value):
+            return False, f"Invalid URL format: {value}. Use format like 'http://localhost:8000'"
+
+        # Parse URL to validate components
+        try:
+            parsed = urlparse(value)
+
+            # Must have scheme and netloc
+            if not parsed.scheme or not parsed.netloc:
+                return False, f"URL must include scheme and host: {value}"
+
+            # Scheme must be http or https
+            if parsed.scheme.lower() not in ['http', 'https']:
+                return False, f"URL scheme must be http or https: {value}"
+
+            # If port is specified, validate it
+            if parsed.port:
+                if not (1 <= parsed.port <= 65535):
+                    return False, f"Port must be between 1 and 65535: {parsed.port}"
+
+            return True, ""
+
+        except Exception as e:
+            return False, f"Invalid URL format: {str(e)}"
+
     def _generate_suggestion(self, var_name: str, value: str, error_msg: str) -> str:
         """Generate helpful suggestions for common validation errors."""
         suggestions = {
@@ -653,7 +707,9 @@ class EnvValidator:
             'LOG_DIR': "Use a relative path like 'logs' or absolute path like '/var/log/minicli'",
             'DIR_SAVE': "Use a relative path like 'results' or 'output' for saving analysis results",
             'API_PORT': "Use port 8000 for development, or any available port between 1024-65535 for production",
-            'API_HOST': "Use '0.0.0.0' to accept connections from all interfaces, or '127.0.0.1' for localhost only"
+            'API_HOST': "Use '0.0.0.0' to accept connections from all interfaces, or '127.0.0.1' for localhost only",
+            'FASTAPI_URL': "Use format 'http://localhost:8000' or 'https://your-domain.com:8000' for production",
+            'WEB_PORT': "Use port 8080 for development, or any available port between 1024-65535 for production"
         }
         
         if var_name in suggestions:

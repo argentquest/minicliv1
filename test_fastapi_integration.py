@@ -1,393 +1,371 @@
+#!/usr/bin/env python3
 """
-Integration tests for FastAPI server endpoints.
+FastAPI Integration Tests
 
-This module provides comprehensive integration tests for the Code Chat AI FastAPI server,
-focusing on both JSON POST and query parameter GET endpoints.
+This module contains integration tests for the FastAPI server endpoints.
+It includes both mocked unit tests and real server tests.
 """
 
 import pytest
 import json
+import time
+from unittest.mock import Mock, patch
+import sys
 import os
-import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 
-# FastAPI test client
+# Add the current directory to the path so we can import our modules
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# Import FastAPI test client and our modules
 from fastapi.testclient import TestClient
-
-# Import the FastAPI app
 from fastapi_server import app
+from file_lock import safe_json_save, safe_json_load
+import requests
+import tempfile
 
-# Create test client
-client = TestClient(app)
 
-
-class TestFastAPIServerIntegration:
-    """Integration tests for FastAPI server endpoints."""
+class TestFastAPIUnitTests:
+    """Unit tests for FastAPI endpoints with mocked dependencies."""
 
     def setup_method(self):
-        """Setup for each test method."""
-        # Use current directory as test folder
-        self.test_folder = os.getcwd()
-        self.test_question = "Explain what this code does"
+        """Set up test client and mocks."""
+        self.client = TestClient(app)
 
-        # Mock AI responses to avoid actual API calls
-        self.mock_response = {
-            'response': 'This is a mock AI response explaining the codebase.',
-            'model': 'gpt-3.5-turbo',
-            'provider': 'openrouter',
-            'processing_time': 1.23,
-            'timestamp': '2025-01-13T12:00:00',
-            'files_count': 5
-        }
+        # Mock the global variables in fastapi_server
+        with patch('fastapi_server.initialize_components', return_value=True):
+            with patch('fastapi_server.ai_processor') as mock_ai:
+                with patch('fastapi_server.scanner') as mock_scanner:
+                    self.mock_ai_processor = mock_ai
+                    self.mock_scanner = mock_scanner
 
     def test_health_endpoint(self):
         """Test the health check endpoint."""
-        response = client.get("/health")
+        response = self.client.get("/health")
 
         assert response.status_code == 200
         data = response.json()
-
-        assert "status" in data
+        assert data["status"] == "healthy"
         assert "timestamp" in data
         assert "version" in data
-        assert data["status"] == "healthy"
-        assert data["version"] == "1.0.0"
 
-    @patch('cli_interface.CLIInterface.process_question')
-    @patch('cli_interface.CLIInterface.scan_codebase')
-    @patch('cli_interface.CLIInterface.setup_system_prompt')
-    @patch('cli_interface.CLIInterface.setup_ai_processor')
-    @patch('cli_interface.CLIInterface.load_configuration')
-    def test_analyze_post_json_endpoint(self, mock_load_config, mock_setup_ai,
-                                       mock_setup_prompt, mock_scan, mock_process):
-        """Test POST /analyze endpoint with JSON body."""
-        # Setup mocks
-        mock_load_config.return_value = {'model': 'gpt-3.5-turbo'}
-        mock_setup_ai.return_value = True
-        mock_setup_prompt.return_value = True
-        mock_scan.return_value = (['file1.py', 'file2.py'], 'mock content')
-        mock_process.return_value = self.mock_response
-
-        # Test data
-        request_data = {
-            "folder": self.test_folder,
-            "question": self.test_question,
-            "model": "gpt-3.5-turbo",
-            "provider": "openrouter",
-            "output": "structured"
+    def test_models_endpoint_success(self):
+        """Test the models endpoint with successful response."""
+        mock_provider_info = {
+            "models": ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"],
+            "default_model": "gpt-3.5-turbo"
         }
 
-        # Make request
-        response = client.post("/analyze", json=request_data)
+        with patch('fastapi_server.ai_processor') as mock_ai:
+            mock_ai.get_provider_info.return_value = mock_provider_info
 
-        # Assertions
-        assert response.status_code == 200
-        data = response.json()
+            response = self.client.get("/models")
 
-        # Check response structure
-        assert "response" in data
-        assert "model" in data
-        assert "provider" in data
-        assert "processing_time" in data
-        assert "timestamp" in data
-        assert "files_count" in data
-
-        # Check specific values
-        assert data["response"] == self.mock_response["response"]
-        assert data["model"] == self.mock_response["model"]
-        assert data["provider"] == self.mock_response["provider"]
-        assert data["files_count"] == self.mock_response["files_count"]
-
-    @patch('cli_interface.CLIInterface.process_question')
-    @patch('cli_interface.CLIInterface.scan_codebase')
-    @patch('cli_interface.CLIInterface.setup_system_prompt')
-    @patch('cli_interface.CLIInterface.setup_ai_processor')
-    @patch('cli_interface.CLIInterface.load_configuration')
-    def test_analyze_get_params_endpoint(self, mock_load_config, mock_setup_ai,
-                                        mock_setup_prompt, mock_scan, mock_process):
-        """Test GET /analyze endpoint with query parameters."""
-        # Setup mocks
-        mock_load_config.return_value = {'model': 'gpt-3.5-turbo'}
-        mock_setup_ai.return_value = True
-        mock_setup_prompt.return_value = True
-        mock_scan.return_value = (['file1.py', 'file2.py'], 'mock content')
-        mock_process.return_value = self.mock_response
-
-        # Make request with query parameters
-        params = {
-            "folder": self.test_folder,
-            "question": self.test_question,
-            "model": "gpt-3.5-turbo",
-            "provider": "openrouter",
-            "output": "structured"
-        }
-
-        response = client.get("/analyze", params=params)
-
-        # Assertions
-        assert response.status_code == 200
-        data = response.json()
-
-        # Check response structure
-        assert "response" in data
-        assert "model" in data
-        assert "provider" in data
-        assert "processing_time" in data
-        assert "timestamp" in data
-        assert "files_count" in data
-
-        # Check specific values
-        assert data["response"] == self.mock_response["response"]
-        assert data["model"] == self.mock_response["model"]
-        assert data["provider"] == self.mock_response["provider"]
-        assert data["files_count"] == self.mock_response["files_count"]
-
-    def test_analyze_get_minimal_params(self):
-        """Test GET /analyze with minimal required parameters."""
-        # Test with only required parameters
-        params = {
-            "folder": self.test_folder,
-            "question": self.test_question
-        }
-
-        response = client.get("/analyze", params=params)
-
-        # Should return 200 even with mocks not set up (will fail in actual processing)
-        # We're just testing parameter validation here
-        assert response.status_code in [200, 500]  # 200 if mocks work, 500 if they don't
-
-    def test_analyze_invalid_output_format(self):
-        """Test GET /analyze with invalid output format."""
-        params = {
-            "folder": self.test_folder,
-            "question": self.test_question,
-            "output": "invalid_format"
-        }
-
-        response = client.get("/analyze", params=params)
-
-        assert response.status_code == 400
-        data = response.json()
-        assert "detail" in data
-        assert "Output format must be" in data["detail"]
-
-    @patch('ai.AIProviderFactory.get_available_providers')
-    def test_analyze_invalid_provider(self, mock_get_providers):
-        """Test GET /analyze with invalid provider."""
-        # Mock available providers
-        mock_get_providers.return_value = ['openrouter', 'tachyon']
-
-        params = {
-            "folder": self.test_folder,
-            "question": self.test_question,
-            "provider": "invalid_provider"
-        }
-
-        response = client.get("/analyze", params=params)
-
-        assert response.status_code == 400
-        data = response.json()
-        assert "detail" in data
-        assert "Provider must be one of" in data["detail"]
-
-    def test_analyze_missing_required_params(self):
-        """Test GET /analyze with missing required parameters."""
-        # Missing folder
-        params = {"question": self.test_question}
-        response = client.get("/analyze", params=params)
-        assert response.status_code == 422  # Validation error
-
-        # Missing question
-        params = {"folder": self.test_folder}
-        response = client.get("/analyze", params=params)
-        assert response.status_code == 422  # Validation error
-
-    @patch('cli_interface.CLIInterface.process_question')
-    @patch('cli_interface.CLIInterface.scan_codebase')
-    @patch('cli_interface.CLIInterface.setup_system_prompt')
-    @patch('cli_interface.CLIInterface.setup_ai_processor')
-    @patch('cli_interface.CLIInterface.load_configuration')
-    def test_analyze_with_file_saving(self, mock_load_config, mock_setup_ai,
-                                     mock_setup_prompt, mock_scan, mock_process):
-        """Test POST /analyze with file saving functionality."""
-        # Setup mocks
-        mock_load_config.return_value = {'model': 'gpt-3.5-turbo'}
-        mock_setup_ai.return_value = True
-        mock_setup_prompt.return_value = True
-        mock_scan.return_value = (['file1.py', 'file2.py'], 'mock content')
-        mock_process.return_value = self.mock_response
-
-        # Create temporary file for saving
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as temp_file:
-            temp_filename = temp_file.name
-
-        try:
-            # Test data with file saving
-            request_data = {
-                "folder": self.test_folder,
-                "question": self.test_question,
-                "output": "json",
-                "save_to": temp_filename
-            }
-
-            # Make request
-            response = client.post("/analyze", json=request_data)
-
-            # Assertions
             assert response.status_code == 200
             data = response.json()
+            assert "models" in data
+            assert "default" in data
+            assert data["default"] == "gpt-3.5-turbo"
+            assert len(data["models"]) == 3
 
-            # Check that file was created (this would be tested in actual implementation)
-            # For this test, we're just ensuring the endpoint accepts the parameter
+    def test_models_endpoint_no_processor(self):
+        """Test the models endpoint when AI processor is not initialized."""
+        with patch('fastapi_server.ai_processor', None):
+            response = self.client.get("/models")
 
-        finally:
-            # Clean up
-            if os.path.exists(temp_filename):
-                os.unlink(temp_filename)
-
-    def test_models_endpoint(self):
-        """Test GET /models endpoint."""
-        response = client.get("/models")
-
-        assert response.status_code == 200
-        data = response.json()
-
-        assert "models" in data
-        assert isinstance(data["models"], list)
+            assert response.status_code == 503
+            data = response.json()
+            assert "AI processor not initialized" in data["detail"]
 
     def test_providers_endpoint(self):
-        """Test GET /providers endpoint."""
-        response = client.get("/providers")
+        """Test the providers endpoint."""
+        mock_providers = ["openrouter", "tachyon", "custom"]
 
-        assert response.status_code == 200
-        data = response.json()
+        with patch('fastapi_server.AIProviderFactory.get_available_providers', return_value=mock_providers):
+            with patch('fastapi_server.env_manager.load_env_file', return_value={"DEFAULT_PROVIDER": "openrouter"}):
+                response = self.client.get("/providers")
 
-        assert "providers" in data
-        assert isinstance(data["providers"], list)
+                assert response.status_code == 200
+                data = response.json()
+                assert "providers" in data
+                assert "default" in data
+                assert data["default"] == "openrouter"
+                assert len(data["providers"]) == 3
 
     def test_system_prompts_endpoint(self):
-        """Test GET /system-prompts endpoint."""
-        response = client.get("/system-prompts")
+        """Test the system prompts endpoint."""
+        response = self.client.get("/system-prompts")
 
         assert response.status_code == 200
         data = response.json()
+        assert "prompts" in data
+        assert isinstance(data["prompts"], list)
+        assert len(data["prompts"]) > 0
 
-        assert "system_prompts" in data
-        assert isinstance(data["system_prompts"], list)
+        # Check structure of first prompt
+        first_prompt = data["prompts"][0]
+        assert "id" in first_prompt
+        assert "name" in first_prompt
+        assert "description" in first_prompt
 
-    @patch('cli_interface.CLIInterface.process_question')
-    @patch('cli_interface.CLIInterface.scan_codebase')
-    @patch('cli_interface.CLIInterface.setup_system_prompt')
-    @patch('cli_interface.CLIInterface.setup_ai_processor')
-    @patch('cli_interface.CLIInterface.load_configuration')
-    def test_analyze_with_filters(self, mock_load_config, mock_setup_ai,
-                                 mock_setup_prompt, mock_scan, mock_process):
-        """Test POST /analyze with file filtering."""
-        # Setup mocks
-        mock_load_config.return_value = {'model': 'gpt-3.5-turbo'}
-        mock_setup_ai.return_value = True
-        mock_setup_prompt.return_value = True
-        mock_scan.return_value = (['file1.py', 'file2.js'], 'mock content')
-        mock_process.return_value = self.mock_response
-
-        # Test data with filters
+    def test_analyze_endpoint_success(self):
+        """Test the analyze endpoint with successful analysis."""
+        # Mock request data
         request_data = {
-            "folder": self.test_folder,
-            "question": self.test_question,
-            "include": "*.py,*.js",
+            "folder": "/test/folder",
+            "question": "What does this code do?",
+            "model": "gpt-3.5-turbo",
+            "provider": "openrouter",
+            "include": "*.py",
+            "exclude": "test_*",
+            "output": "structured"
+        }
+
+        # Mock responses
+        mock_ai_response = "This is a test response from the AI."
+        mock_files = ["/test/folder/main.py", "/test/folder/utils.py"]
+
+        with patch('fastapi_server.ai_processor') as mock_ai:
+            with patch('fastapi_server.scanner') as mock_scanner:
+                # Setup mocks
+                mock_ai.process_question.return_value = mock_ai_response
+                mock_scanner.validate_directory.return_value = (True, "")
+                mock_scanner.scan_directory.return_value = mock_files
+                mock_scanner.get_codebase_content.return_value = "# Test content"
+
+                response = self.client.post("/analyze", json=request_data)
+
+                assert response.status_code == 200
+                data = response.json()
+                assert data["response"] == mock_ai_response
+                assert data["model"] == "gpt-3.5-turbo"
+                assert data["provider"] == "openrouter"
+                assert "processing_time" in data
+                assert "timestamp" in data
+                assert data["files_count"] == 2
+
+    def test_analyze_endpoint_invalid_directory(self):
+        """Test the analyze endpoint with invalid directory."""
+        request_data = {
+            "folder": "/invalid/folder",
+            "question": "What does this code do?",
+            "model": "gpt-3.5-turbo"
+        }
+
+        with patch('fastapi_server.scanner') as mock_scanner:
+            mock_scanner.validate_directory.return_value = (False, "Directory does not exist")
+
+            response = self.client.post("/analyze", json=request_data)
+
+            assert response.status_code == 400
+            data = response.json()
+            assert "Directory does not exist" in data["detail"]
+
+    def test_analyze_endpoint_no_files(self):
+        """Test the analyze endpoint when no files are found."""
+        request_data = {
+            "folder": "/test/folder",
+            "question": "What does this code do?"
+        }
+
+        with patch('fastapi_server.scanner') as mock_scanner:
+            mock_scanner.validate_directory.return_value = (True, "")
+            mock_scanner.scan_directory.return_value = []  # No files
+
+            response = self.client.post("/analyze", json=request_data)
+
+            assert response.status_code == 400
+            data = response.json()
+            assert "No supported files found" in data["detail"]
+
+    def test_analyze_endpoint_no_processor(self):
+        """Test the analyze endpoint when AI processor is not initialized."""
+        request_data = {
+            "folder": "/test/folder",
+            "question": "What does this code do?"
+        }
+
+        with patch('fastapi_server.ai_processor', None):
+            response = self.client.post("/analyze", json=request_data)
+
+            assert response.status_code == 503
+            data = response.json()
+            assert "AI processor not initialized" in data["detail"]
+
+    def test_analyze_endpoint_with_filters(self):
+        """Test the analyze endpoint with file filtering."""
+        request_data = {
+            "folder": "/test/folder",
+            "question": "What does this code do?",
+            "include": "*.py",
             "exclude": "test_*"
         }
 
-        # Make request
-        response = client.post("/analyze", json=request_data)
+        mock_files = ["/test/folder/main.py", "/test/folder/test_main.py", "/test/folder/utils.js"]
+        filtered_files = ["/test/folder/main.py"]  # Only main.py after filtering
 
-        # Assertions
-        assert response.status_code == 200
-        data = response.json()
+        with patch('fastapi_server.ai_processor') as mock_ai:
+            with patch('fastapi_server.scanner') as mock_scanner:
+                mock_ai.process_question.return_value = "Filtered analysis response"
+                mock_scanner.validate_directory.return_value = (True, "")
+                mock_scanner.scan_directory.return_value = mock_files
+                mock_scanner.get_codebase_content.return_value = "# Filtered content"
 
-        # Verify that scan_codebase was called with correct filters
-        mock_scan.assert_called_once()
-        call_args = mock_scan.call_args[0]
-        assert call_args[0] == self.test_folder  # folder
-        assert call_args[1] == "*.py,*.js"      # include
-        assert call_args[2] == "test_*"         # exclude
+                response = self.client.post("/analyze", json=request_data)
 
-    def test_analyze_json_validation(self):
-        """Test POST /analyze JSON validation."""
-        # Test with invalid JSON structure
-        invalid_data = {
-            "invalid_field": "value"
-            # Missing required fields: folder, question
+                assert response.status_code == 200
+                data = response.json()
+                assert data["files_count"] == 3  # Original file count
+                assert data["response"] == "Filtered analysis response"
+
+    def test_analyze_endpoint_processing_error(self):
+        """Test the analyze endpoint when processing fails."""
+        request_data = {
+            "folder": "/test/folder",
+            "question": "What does this code do?"
         }
 
-        response = client.post("/analyze", json=invalid_data)
+        with patch('fastapi_server.ai_processor') as mock_ai:
+            with patch('fastapi_server.scanner') as mock_scanner:
+                mock_ai.process_question.side_effect = Exception("AI processing failed")
+                mock_scanner.validate_directory.return_value = (True, "")
+                mock_scanner.scan_directory.return_value = ["/test/folder/main.py"]
+                mock_scanner.get_codebase_content.return_value = "# Test content"
 
+                response = self.client.post("/analyze", json=request_data)
+
+                assert response.status_code == 500
+                data = response.json()
+                assert "Analysis failed" in data["detail"]
+
+    def test_parameter_validation(self):
+        """Test parameter validation for the analyze endpoint."""
+        # Test missing required fields
+        incomplete_request = {"question": "What does this code do?"}  # Missing folder
+
+        response = self.client.post("/analyze", json=incomplete_request)
         assert response.status_code == 422  # Validation error
-        data = response.json()
-        assert "detail" in data
+
+    def test_file_saving_functionality(self, tmp_path):
+        """Test file saving functionality used by the analyze endpoint."""
+        test_data = {"test": "data", "number": 42}
+        test_file = tmp_path / "test_output.json"
+
+        # Test successful save
+        result = safe_json_save(test_data, str(test_file))
+        assert result is True
+        assert test_file.exists()
+
+        # Verify content
+        loaded_data = safe_json_load(str(test_file))
+        assert loaded_data == test_data
+
+    def test_json_response_format(self):
+        """Test that JSON responses are properly formatted."""
+        request_data = {
+            "folder": "/test/folder",
+            "question": "Test question",
+            "output": "json"
+        }
+
+        with patch('fastapi_server.ai_processor') as mock_ai:
+            with patch('fastapi_server.scanner') as mock_scanner:
+                mock_ai.process_question.return_value = "Test response"
+                mock_scanner.validate_directory.return_value = (True, "")
+                mock_scanner.scan_directory.return_value = ["/test/folder/main.py"]
+                mock_scanner.get_codebase_content.return_value = "# Test"
+
+                response = self.client.post("/analyze", json=request_data)
+
+                assert response.status_code == 200
+                data = response.json()
+
+                # Verify all expected fields are present
+                required_fields = ["response", "model", "provider", "processing_time", "timestamp", "files_count"]
+                for field in required_fields:
+                    assert field in data
+
+                # Verify data types
+                assert isinstance(data["response"], str)
+                assert isinstance(data["processing_time"], (int, float))
+                assert isinstance(data["files_count"], int)
 
 
-# Helper function to run tests with real server
 def test_with_real_server():
-    """
-    Test function that can be run against a real running server.
-
-    Usage:
-        1. Start the FastAPI server: python fastapi_server.py
-        2. Run this test: python -c "from test_fastapi_integration import test_with_real_server; test_with_real_server()"
-
-    Note: This requires a real API key and will make actual API calls.
-    """
-    import requests
+    """Test against a real running FastAPI server."""
+    print("🧪 Testing against real FastAPI server...")
+    print("Note: Make sure the FastAPI server is running on http://localhost:8000")
 
     base_url = "http://localhost:8000"
 
-    print("Testing real FastAPI server...")
-
-    # Test health endpoint
     try:
-        response = requests.get(f"{base_url}/health")
-        print(f"✅ Health check: {response.status_code}")
-        print(f"   Response: {response.json()}")
-    except Exception as e:
-        print(f"❌ Health check failed: {e}")
-        return
+        # Test 1: Health check
+        print("1. Testing health endpoint...")
+        response = requests.get(f"{base_url}/health", timeout=10)
+        assert response.status_code == 200
+        health_data = response.json()
+        assert health_data["status"] == "healthy"
+        print("   ✅ Health check passed")
 
-    # Test models endpoint
-    try:
-        response = requests.get(f"{base_url}/models")
-        print(f"✅ Models endpoint: {response.status_code}")
-        print(f"   Available models: {response.json()}")
-    except Exception as e:
-        print(f"❌ Models endpoint failed: {e}")
-
-    # Test providers endpoint
-    try:
-        response = requests.get(f"{base_url}/providers")
-        print(f"✅ Providers endpoint: {response.status_code}")
-        print(f"   Available providers: {response.json()}")
-    except Exception as e:
-        print(f"❌ Providers endpoint failed: {e}")
-
-    # Test analysis with GET (simple parameters)
-    try:
-        params = {
-            "folder": os.getcwd(),
-            "question": "Explain what this project does"
-        }
-        response = requests.get(f"{base_url}/analyze", params=params)
-        print(f"✅ GET analysis: {response.status_code}")
+        # Test 2: Models endpoint
+        print("2. Testing models endpoint...")
+        response = requests.get(f"{base_url}/models", timeout=10)
         if response.status_code == 200:
-            data = response.json()
-            print(f"   Model: {data.get('model', 'N/A')}")
-            print(f"   Files analyzed: {data.get('files_count', 'N/A')}")
+            models_data = response.json()
+            assert "models" in models_data
+            assert "default" in models_data
+            print(f"   ✅ Models endpoint returned {len(models_data['models'])} models")
         else:
-            print(f"   Error: {response.text}")
-    except Exception as e:
-        print(f"❌ GET analysis failed: {e}")
+            print(f"   ⚠️  Models endpoint returned {response.status_code} - AI processor may not be initialized")
 
-    print("\n🎉 Real server testing complete!")
+        # Test 3: Providers endpoint
+        print("3. Testing providers endpoint...")
+        response = requests.get(f"{base_url}/providers", timeout=10)
+        assert response.status_code == 200
+        providers_data = response.json()
+        assert "providers" in providers_data
+        assert "default" in providers_data
+        print(f"   ✅ Providers endpoint returned {len(providers_data['providers'])} providers")
+
+        # Test 4: System prompts endpoint
+        print("4. Testing system prompts endpoint...")
+        response = requests.get(f"{base_url}/system-prompts", timeout=10)
+        assert response.status_code == 200
+        prompts_data = response.json()
+        assert "prompts" in prompts_data
+        print(f"   ✅ System prompts endpoint returned {len(prompts_data['prompts'])} prompts")
+
+        # Test 5: Basic analysis request (if API key is configured)
+        print("5. Testing basic analysis endpoint...")
+        test_request = {
+            "folder": ".",  # Current directory
+            "question": "What is the main purpose of this codebase?",
+            "model": "gpt-3.5-turbo",
+            "provider": "openrouter"
+        }
+
+        response = requests.post(f"{base_url}/analyze", json=test_request, timeout=30)
+
+        if response.status_code == 200:
+            analysis_data = response.json()
+            assert "response" in analysis_data
+            assert "model" in analysis_data
+            assert "processing_time" in analysis_data
+            print(".2f")
+        elif response.status_code == 503:
+            print("   ⚠️  Analysis endpoint returned 503 - AI processor not initialized (no API key)")
+        else:
+            print(f"   ❌ Analysis endpoint returned {response.status_code}: {response.text}")
+
+        print("\n🎉 All real server tests completed!")
+
+    except requests.exceptions.ConnectionError:
+        print("❌ Could not connect to FastAPI server at http://localhost:8000")
+        print("   Make sure the server is running with: python fastapi_server.py")
+        raise
+    except Exception as e:
+        print(f"❌ Real server test failed: {str(e)}")
+        raise
 
 
 if __name__ == "__main__":

@@ -1,97 +1,148 @@
+#!/usr/bin/env python3
 """
 FastAPI Server for Code Chat AI
-Provides REST API endpoints for codebase analysis using AI.
+
+This module provides a REST API server for the Code Chat AI application,
+exposing AI processing and codebase analysis capabilities through HTTP endpoints.
+
+Features:
+- RESTful API for code analysis
+- Multiple AI provider support
+- File scanning and content processing
+- CORS support for web frontend
+- Comprehensive error handling
+- Health check endpoint
+
+Endpoints:
+- GET /health - Server health check
+- GET /models - List available AI models
+- GET /providers - List available AI providers
+- GET /system-prompts - List available system prompts
+- POST /analyze - Perform code analysis
+
+Usage:
+    python fastapi_server.py
+
+The server will start on http://localhost:8000 by default.
 """
 
 import os
-import json
-from typing import Optional
+import sys
 from datetime import datetime
+from typing import List, Dict, Any, Optional
+from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, field_validator
-from dotenv import load_dotenv
+from pydantic import BaseModel, Field
+import uvicorn
 
-from cli_interface import CLIInterface
+# Import local modules
+from ai import create_ai_processor, AIProviderFactory
+from file_scanner import CodebaseScanner
+from lazy_file_scanner import LazyCodebaseScanner
+from env_manager import EnvManager
 from logger import get_logger
 
-# Load environment variables
-load_dotenv()
+# Initialize logger
+logger = get_logger(__name__)
 
-# Initialize FastAPI app
+# Initialize environment manager
+env_manager = EnvManager()
+
+# Create FastAPI app
 app = FastAPI(
     title="Code Chat AI API",
-    description="REST API for analyzing codebases with AI assistance",
-    version="1.0.0"
+    description="REST API for Code Chat AI - Advanced codebase analysis with AI",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=["*"],  # Configure for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Initialize logger
-logger = get_logger("fastapi")
-
 # Pydantic models for request/response
 class AnalysisRequest(BaseModel):
-    """Request model for codebase analysis."""
-    folder: str = Field(..., description="Path to the codebase folder to analyze")
-    question: str = Field(..., description="Question to ask about the codebase")
-    model: Optional[str] = Field(None, description="AI model to use")
-    provider: Optional[str] = Field(None, description="AI provider to use")
-    api_key: Optional[str] = Field(None, description="API key (overrides .env)")
-    system_prompt: Optional[str] = Field(None, description="System prompt file name")
-    include: Optional[str] = Field(None, description="File patterns to include (comma-separated)")
-    exclude: Optional[str] = Field(None, description="File patterns to exclude (comma-separated)")
-    output: str = Field("structured", description="Output format: 'structured' or 'json'")
-    save_to: Optional[str] = Field(None, description="Save output to file path")
-    verbose: bool = Field(False, description="Enable verbose logging")
-
-    @field_validator('provider')
-    def validate_provider(cls, v):
-        """Validate provider against available providers."""
-        if v is not None:
-            from ai import AIProviderFactory
-            available = AIProviderFactory.get_available_providers()
-            if v not in available:
-                raise ValueError(f"Provider must be one of: {', '.join(available)}")
-        return v
-
-    @field_validator('output')
-    def validate_output_format(cls, v):
-        """Validate output format."""
-        if v not in ['structured', 'json']:
-            raise ValueError("Output format must be 'structured' or 'json'")
-        return v
+    """Request model for code analysis."""
+    folder: str = Field(..., description="Path to the codebase folder")
+    question: str = Field(..., description="Question about the codebase")
+    model: str = Field(default="gpt-3.5-turbo", description="AI model to use")
+    provider: str = Field(default="openrouter", description="AI provider to use")
+    include: Optional[str] = Field(default="*.py,*.js,*.ts,*.java,*.cpp,*.c,*.h", description="File patterns to include")
+    exclude: Optional[str] = Field(default="test_*,__pycache__,*.pyc,node_modules,venv,.venv", description="File patterns to exclude")
+    output: str = Field(default="structured", description="Output format")
+    api_key: Optional[str] = Field(default=None, description="API key (optional, uses environment)")
 
 class AnalysisResponse(BaseModel):
-    """Response model for analysis results."""
-    response: str = Field(..., description="AI response content")
+    """Response model for code analysis."""
+    response: str = Field(..., description="AI analysis response")
     model: str = Field(..., description="Model used for analysis")
     provider: str = Field(..., description="Provider used for analysis")
     processing_time: float = Field(..., description="Processing time in seconds")
-    timestamp: str = Field(..., description="Timestamp of analysis")
-    files_count: int = Field(..., description="Number of files analyzed")
-
-class ErrorResponse(BaseModel):
-    """Error response model."""
-    error: str = Field(..., description="Error message")
-    details: Optional[str] = Field(None, description="Additional error details")
+    timestamp: str = Field(..., description="Response timestamp")
+    files_count: int = Field(..., description="Number of files processed")
 
 class HealthResponse(BaseModel):
-    """Health check response model."""
-    status: str = Field(..., description="Service status")
+    """Health check response."""
+    status: str = Field(..., description="Server status")
     timestamp: str = Field(..., description="Current timestamp")
     version: str = Field(..., description="API version")
 
-# Global CLI interface instance
-cli_interface = CLIInterface()
+class ModelsResponse(BaseModel):
+    """Available models response."""
+    models: List[str] = Field(..., description="List of available models")
+    default: str = Field(..., description="Default model")
+
+class ProvidersResponse(BaseModel):
+    """Available providers response."""
+    providers: List[str] = Field(..., description="List of available providers")
+    default: str = Field(..., description="Default provider")
+
+# Global variables
+ai_processor = None
+scanner = None
+lazy_scanner = None
+
+def initialize_components():
+    """Initialize AI processor and scanners."""
+    global ai_processor, scanner, lazy_scanner
+
+    try:
+        # Initialize scanners
+        scanner = CodebaseScanner()
+        lazy_scanner = LazyCodebaseScanner()
+
+        # Get API key from environment
+        env_vars = env_manager.load_env_file()
+        api_key = env_vars.get("API_KEY", "")
+        provider = env_vars.get("DEFAULT_PROVIDER", "openrouter")
+
+        if not api_key:
+            logger.warning("No API_KEY found in environment variables")
+            return False
+
+        # Initialize AI processor
+        ai_processor = create_ai_processor(api_key=api_key, provider=provider)
+        logger.info(f"Initialized AI processor with provider: {provider}")
+
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to initialize components: {e}")
+        return False
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize components on startup."""
+    if not initialize_components():
+        logger.warning("Some components failed to initialize - API may not work fully")
 
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
@@ -102,309 +153,175 @@ async def health_check():
         version="1.0.0"
     )
 
-@app.post("/analyze", response_model=AnalysisResponse)
-async def analyze_codebase_json(request: AnalysisRequest):
-    """
-    Analyze a codebase with AI assistance (JSON body).
-
-    This endpoint accepts parameters as JSON in the request body.
-    Use this for programmatic access with structured data.
-
-    Supports all CLI parameters including:
-    - Dynamic provider selection from environment
-    - File filtering with include/exclude patterns
-    - Output formatting (structured/json)
-    - Optional file saving
-    - Verbose logging
-    """
-    return await _analyze_codebase_impl(
-        folder=request.folder,
-        question=request.question,
-        model=request.model,
-        provider=request.provider,
-        api_key=request.api_key,
-        system_prompt=request.system_prompt,
-        include=request.include,
-        exclude=request.exclude,
-        output=request.output,
-        save_to=request.save_to,
-        verbose=request.verbose
-    )
-
-@app.get("/analyze", response_model=AnalysisResponse)
-async def analyze_codebase_params(
-    folder: str,
-    question: str,
-    model: Optional[str] = None,
-    provider: Optional[str] = None,
-    api_key: Optional[str] = None,
-    system_prompt: Optional[str] = None,
-    include: Optional[str] = None,
-    exclude: Optional[str] = None,
-    output: str = "structured",
-    save_to: Optional[str] = None,
-    verbose: bool = False
-):
-    """
-    Analyze a codebase with AI assistance (query parameters).
-
-    This endpoint accepts parameters as URL query parameters.
-    Use this for simple requests or when you prefer URL-based parameters.
-
-    Args:
-        folder: Path to the codebase folder to analyze
-        question: Question to ask about the codebase
-        model: AI model to use (optional)
-        provider: AI provider to use (optional)
-        api_key: API key override (optional)
-        system_prompt: System prompt file name (optional)
-        include: File patterns to include (optional)
-        exclude: File patterns to exclude (optional)
-        output: Output format ('structured' or 'json')
-        save_to: Save output to file path (optional)
-        verbose: Enable verbose logging (optional)
-    """
-    # Validate parameters
-    if output not in ['structured', 'json']:
-        raise HTTPException(
-            status_code=400,
-            detail="Output format must be 'structured' or 'json'"
-        )
-
-    if provider is not None:
-        from ai import AIProviderFactory
-        available = AIProviderFactory.get_available_providers()
-        if provider not in available:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Provider must be one of: {', '.join(available)}"
-            )
-
-    return await _analyze_codebase_impl(
-        folder=folder,
-        question=question,
-        model=model,
-        provider=provider,
-        api_key=api_key,
-        system_prompt=system_prompt,
-        include=include,
-        exclude=exclude,
-        output=output,
-        save_to=save_to,
-        verbose=verbose
-    )
-
-async def _analyze_codebase_impl(
-    folder: str,
-    question: str,
-    model: Optional[str] = None,
-    provider: Optional[str] = None,
-    api_key: Optional[str] = None,
-    system_prompt: Optional[str] = None,
-    include: Optional[str] = None,
-    exclude: Optional[str] = None,
-    output: str = "structured",
-    save_to: Optional[str] = None,
-    verbose: bool = False
-):
-    """
-    Internal implementation for codebase analysis.
-    Shared between JSON and parameter-based endpoints.
-    """
+@app.get("/models", response_model=ModelsResponse)
+async def get_models():
+    """Get available AI models."""
     try:
-        logger.info(f"Received analysis request for folder: {folder}")
+        if not ai_processor:
+            raise HTTPException(status_code=503, detail="AI processor not initialized")
 
-        # Create a mock args object for CLI interface compatibility
-        from argparse import Namespace
+        # Get provider info which includes available models
+        provider_info = ai_processor.get_provider_info()
+        models = provider_info.get("models", [])
 
-        args = Namespace()
-        args.folder = folder
-        args.question = question
-        args.model = model
-        args.provider = provider
-        args.api_key = api_key
-        args.system_prompt = system_prompt
-        args.include = include
-        args.exclude = exclude
-        args.output = output
-        args.verbose = verbose
-        args.save_to = save_to
-
-        # Load configuration
-        config = cli_interface.load_configuration(args)
-
-        # Setup AI processor
-        if not cli_interface.setup_ai_processor(config):
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to initialize AI processor. Check API key configuration."
-            )
-
-        # Setup system prompt
-        if not cli_interface.setup_system_prompt(args.system_prompt):
-            raise HTTPException(
-                status_code=400,
-                detail=f"System prompt '{args.system_prompt}' not found"
-            )
-
-        # Scan codebase
-        files, codebase_content = cli_interface.scan_codebase(
-            args.folder, args.include, args.exclude
+        return ModelsResponse(
+            models=models,
+            default=provider_info.get("default_model", "gpt-3.5-turbo")
         )
+
+    except Exception as e:
+        logger.error(f"Error getting models: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/providers", response_model=ProvidersResponse)
+async def get_providers():
+    """Get available AI providers."""
+    try:
+        providers = AIProviderFactory.get_available_providers()
+        env_vars = env_manager.load_env_file()
+        default_provider = env_vars.get("DEFAULT_PROVIDER", "openrouter")
+
+        return ProvidersResponse(
+            providers=providers,
+            default=default_provider
+        )
+
+    except Exception as e:
+        logger.error(f"Error getting providers: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/system-prompts")
+async def get_system_prompts():
+    """Get available system prompts."""
+    try:
+        # This would typically read from a configuration file
+        # For now, return a simple list
+        prompts = [
+            {"id": "default", "name": "Default", "description": "General code analysis"},
+            {"id": "security", "name": "Security Review", "description": "Security-focused analysis"},
+            {"id": "performance", "name": "Performance", "description": "Performance optimization"},
+            {"id": "architecture", "name": "Architecture", "description": "System architecture review"}
+        ]
+
+        return {"prompts": prompts}
+
+    except Exception as e:
+        logger.error(f"Error getting system prompts: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/analyze", response_model=AnalysisResponse)
+async def analyze_code(request: AnalysisRequest):
+    """Analyze codebase with AI."""
+    start_time = datetime.now()
+
+    try:
+        if not ai_processor:
+            raise HTTPException(status_code=503, detail="AI processor not initialized")
+
+        # Validate directory
+        if not scanner:
+            raise HTTPException(status_code=503, detail="File scanner not initialized")
+
+        is_valid, error_msg = scanner.validate_directory(request.folder)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=f"Invalid directory: {error_msg}")
+
+        # Set API key if provided
+        if request.api_key:
+            ai_processor.set_api_key(request.api_key)
+
+        # Set provider if different
+        if request.provider != ai_processor.provider:
+            ai_processor.set_provider(request.provider)
+
+        # Scan directory for files
+        logger.info(f"Scanning directory: {request.folder}")
+        files = scanner.scan_directory(request.folder)
 
         if not files:
-            raise HTTPException(
-                status_code=400,
-                detail="No files found in the specified folder after applying filters"
-            )
+            raise HTTPException(status_code=400, detail="No supported files found in directory")
 
-        # Process question
-        result = cli_interface.process_question(
-            args.question, codebase_content, config['model']
+        # Filter files based on include/exclude patterns
+        if request.include or request.exclude:
+            filtered_files = []
+            include_patterns = [p.strip() for p in request.include.split(',')] if request.include else []
+            exclude_patterns = [p.strip() for p in request.exclude.split(',')] if request.exclude else []
+
+            for file_path in files:
+                filename = os.path.basename(file_path)
+
+                # Check include patterns
+                if include_patterns:
+                    if not any(pattern in filename for pattern in include_patterns):
+                        continue
+
+                # Check exclude patterns
+                if exclude_patterns:
+                    if any(pattern in filename for pattern in exclude_patterns):
+                        continue
+
+                filtered_files.append(file_path)
+
+            files = filtered_files
+
+        logger.info(f"Processing {len(files)} files")
+
+        # Get codebase content
+        codebase_content = scanner.get_codebase_content(files)
+
+        # Process question with AI
+        logger.info(f"Processing question with model: {request.model}")
+        response = ai_processor.process_question(
+            question=request.question,
+            conversation_history=[],
+            codebase_content=codebase_content,
+            model=request.model
         )
 
-        if result is None:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to process question with AI"
-            )
+        # Calculate processing time
+        processing_time = (datetime.now() - start_time).total_seconds()
 
-        # Add files count to result
-        result['files_count'] = len(files)
+        logger.info(".2f")
 
-        # Handle file saving if requested
-        if save_to:
-            try:
-                from file_lock import safe_file_operation
-
-                # Format output based on request
-                if output == 'json':
-                    output_content = json.dumps(result, indent=2, ensure_ascii=False)
-                else:
-                    # Create structured text output
-                    lines = [
-                        "# Code Chat AI - API Analysis Results",
-                        "",
-                        f"**Timestamp:** {result['timestamp']}",
-                        f"**Model:** {result['model']}",
-                        f"**Provider:** {result['provider']}",
-                        f"**Processing Time:** {result['processing_time']:.2f}s",
-                        f"**Files Analyzed:** {len(files)}",
-                        "",
-                        "## Question",
-                        f"{question}",
-                        "",
-                        "## Response",
-                        "",
-                        result['response']
-                    ]
-                    output_content = '\n'.join(lines)
-
-                # Save with file locking
-                with safe_file_operation(save_to, timeout=10.0):
-                    with open(save_to, 'w', encoding='utf-8') as f:
-                        f.write(output_content)
-
-                logger.info(f"Results saved to: {save_to}")
-
-            except Exception as e:
-                logger.warning(f"Failed to save results to file: {str(e)}")
-                # Don't fail the request if file saving fails
-
-        logger.info(f"Analysis completed successfully for {len(files)} files")
-
-        return AnalysisResponse(**result)
+        return AnalysisResponse(
+            response=response,
+            model=request.model,
+            provider=request.provider,
+            processing_time=processing_time,
+            timestamp=datetime.now().isoformat(),
+            files_count=len(files)
+        )
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(f"Error processing analysis request: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Internal server error: {str(e)}"
-        )
+        logger.error(f"Error during analysis: {e}")
+        processing_time = (datetime.now() - start_time).total_seconds()
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
-@app.get("/models")
-async def get_available_models():
-    """Get list of available AI models."""
-    try:
-        # Load configuration to get available models
-        load_dotenv()
-        models_env = os.getenv('MODELS', '')
-        if models_env:
-            models = [m.strip() for m in models_env.split(',') if m.strip()]
-        else:
-            models = [
-                "openai/gpt-3.5-turbo",
-                "openai/gpt-4",
-                "openai/gpt-4-turbo",
-                "anthropic/claude-3-haiku",
-                "anthropic/claude-3-sonnet"
-            ]
+def main():
+    """Main entry point."""
+    import argparse
 
-        return {"models": models}
+    parser = argparse.ArgumentParser(description="FastAPI Server for Code Chat AI")
+    parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
+    parser.add_argument("--port", type=int, default=8000, help="Port to bind to")
+    parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
 
-    except Exception as e:
-        logger.exception(f"Error getting models: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to retrieve models: {str(e)}"
-        )
+    args = parser.parse_args()
 
-@app.get("/providers")
-async def get_available_providers():
-    """Get list of available AI providers."""
-    try:
-        from ai import AIProviderFactory
-        factory = AIProviderFactory()
-        providers = factory.get_available_providers()
-        return {"providers": providers}
-
-    except Exception as e:
-        logger.exception(f"Error getting providers: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to retrieve providers: {str(e)}"
-        )
-
-@app.get("/system-prompts")
-async def get_system_prompts():
-    """Get list of available system prompt files."""
-    try:
-        from system_message_manager import system_message_manager
-        files_info = system_message_manager.get_system_message_files_info()
-
-        prompts = []
-        for file_info in files_info:
-            prompts.append({
-                "name": file_info['display_name'],
-                "filename": file_info['filename'],
-                "is_current": file_info['is_current']
-            })
-
-        return {"system_prompts": prompts}
-
-    except Exception as e:
-        logger.exception(f"Error getting system prompts: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to retrieve system prompts: {str(e)}"
-        )
-
-if __name__ == "__main__":
-    import uvicorn
-
-    # Get port from environment or use default
-    port = int(os.getenv("API_PORT", "8000"))
-    host = os.getenv("API_HOST", "0.0.0.0")
-
-    print(f"Starting FastAPI server on {host}:{port}")
-    print(f"API documentation available at: http://{host}:{port}/docs")
+    print("🚀 Starting Code Chat AI FastAPI Server")
+    print(f"📡 Server will be available at: http://{args.host}:{args.port}")
+    print(f"📚 API documentation at: http://{args.host}:{args.port}/docs")
+    print("=" * 50)
 
     uvicorn.run(
         "fastapi_server:app",
-        host=host,
-        port=port,
-        reload=True,
+        host=args.host,
+        port=args.port,
+        reload=args.reload,
         log_level="info"
     )
+
+if __name__ == "__main__":
+    main()

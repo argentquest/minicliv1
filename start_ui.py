@@ -1,105 +1,154 @@
 #!/usr/bin/env python3
 """
-Code Chat with AI - Visibility-Enhanced Launcher
+Enhanced UI Launcher - Forces Window Visibility
 
-This is a specialized launcher for the Code Chat with AI application that
-ensures the GUI window is properly visible and positioned. It addresses
-common Tkinter window visibility issues that can occur on certain systems
-or window managers.
+This launcher ensures the Code Chat AI application window is always visible
+and properly positioned, addressing common Tkinter window visibility issues
+on various operating systems.
 
-Key features:
-- Forces window to appear on top during startup
-- Sets specific window positioning and sizing
-- Provides user feedback about window visibility
-- Includes comprehensive error handling with user guidance
-- Graceful fallback for window manager compatibility issues
+Features:
+- Forces window to stay on top during initialization
+- Centers window on screen
+- Ensures proper window focus and visibility
+- Enhanced error handling with detailed logging
+- Automatic window positioning and sizing
 
 Usage:
     python start_ui.py
 
-This launcher is particularly useful when:
-- The main application window doesn't appear
-- Users experience window positioning issues
-- System window managers interfere with Tkinter window display
-- Debugging window visibility problems
-
-The launcher uses Tkinter's window management features to ensure
-reliable window display across different platforms and configurations.
+This launcher is particularly useful when the main application window
+doesn't appear or stays hidden behind other windows.
 """
 
 import tkinter as tk
+from tkinter import messagebox
 import sys
-import os
+import traceback
+import time
+
+def force_window_visibility(root, title="Code Chat AI"):
+    """
+    Force the Tkinter window to be visible and properly positioned.
+
+    Args:
+        root: Tkinter root window
+        title: Window title
+    """
+    try:
+        # Set window properties for visibility
+        root.title(title)
+        root.attributes('-topmost', True)  # Keep on top during init
+        root.lift()  # Bring to front
+        root.focus_force()  # Force focus
+
+        # Set window size and position
+        window_width = 1200
+        window_height = 800
+
+        # Get screen dimensions
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+
+        # Calculate center position
+        center_x = int((screen_width - window_width) / 2)
+        center_y = int((screen_height - window_height) / 2)
+
+        # Set window geometry
+        root.geometry(f'{window_width}x{window_height}+{center_x}+{center_y}')
+
+        # Force update and small delay to ensure visibility
+        root.update()
+        time.sleep(0.1)
+
+        # Remove always-on-top after initialization
+        root.attributes('-topmost', False)
+
+        return True
+
+    except Exception as e:
+        print(f"Warning: Could not force window visibility: {e}", file=sys.stderr)
+        return False
 
 def main():
     """
-    Start the Code Chat application with enhanced window visibility.
+    Main entry point with enhanced window visibility forcing.
 
-    This function creates a Tkinter root window and applies several
-    visibility-enhancing techniques to ensure the application window
-    appears properly on screen. It handles window positioning, focus,
-    and provides user feedback about the startup process.
-
-    The visibility enhancements include:
-    - Window positioning at specific coordinates (100, 100)
-    - Forced window sizing (1200x900)
-    - Topmost window attribute during startup
-    - Explicit focus forcing
-    - User feedback messages about window status
-
-    Error handling:
-    - Catches all exceptions during startup
-    - Displays error messages in GUI dialogs when possible
-    - Provides console fallback for error reporting
-    - Prompts user to press Enter for clean exit on errors
-
-    Returns:
-        None - Function runs the Tkinter main loop or exits on error
+    This function creates the Tkinter application with additional steps
+    to ensure the window is visible and properly positioned on screen.
     """
+    root = None
+
     try:
-        print("Starting Code Chat with AI...")
-        
+        print("🚀 Starting Code Chat AI with enhanced UI visibility...")
+
         # Create root window
         root = tk.Tk()
-        
-        # Force window to front
-        root.lift()
-        root.attributes('-topmost', True)
-        root.after_idle(root.attributes, '-topmost', False)
-        
-        # Position window at specific location
-        root.geometry("1200x900+100+100")
-        
-        # Set window properties
-        root.title("🤖 Code Chat with AI - Modern Edition")
-        
-        # Import and create app
+
+        # Force window visibility before importing the main application
+        force_window_visibility(root, "Code Chat AI - Initializing...")
+
+        print("✅ Window visibility forced successfully")
+
+        # Import the main application
+        print("📦 Loading application modules...")
         from minicli import SimpleModernCodeChatApp
+
+        # Update window title
+        root.title("Code Chat AI")
+
+        print("🏗️  Creating application instance...")
         app = SimpleModernCodeChatApp(root)
-        
-        # Force focus
+
+        # Ensure window stays visible after app creation
+        root.lift()
         root.focus_force()
-        
-        print("Application window should now be visible!")
-        print("If you still don't see it, check your taskbar or try Alt+Tab")
-        
+
+        print("🎯 Application initialized successfully")
+        print("💡 Window should now be visible and focused")
+
         # Start the application
         app.run()
-        
-    except Exception as e:
-        print(f"Error starting application: {e}")
-        import traceback
-        traceback.print_exc()
-        
-        # Show error in message box
+
+    except ImportError as e:
+        # Handle missing dependencies
+        error_msg = f"Missing required dependency: {str(e)}\n\nPlease install dependencies with:\npip install -r requirements.txt"
+
+        print(f"❌ Import Error: {error_msg}", file=sys.stderr)
+
+        # Show error in GUI if possible
         try:
-            root = tk.Tk()
-            root.withdraw()
-            tk.messagebox.showerror("Startup Error", f"Failed to start application:\n\n{str(e)}")
-        except:
-            pass
-        
-        input("Press Enter to exit...")
+            if root is None:
+                root = tk.Tk()
+                root.withdraw()
+
+            force_window_visibility(root, "Dependency Error")
+            messagebox.showerror("Dependency Error", error_msg)
+        except Exception as gui_error:
+            print(f"Could not show GUI error dialog: {gui_error}", file=sys.stderr)
+            print(f"Error: {error_msg}", file=sys.stderr)
+
+        sys.exit(1)
+
+    except Exception as e:
+        # Handle other startup errors
+        error_details = traceback.format_exc()
+        error_msg = f"Application startup failed: {str(e)}\n\nDetails:\n{error_details}"
+
+        print(f"❌ Startup Error: {error_msg}", file=sys.stderr)
+
+        # Show error in GUI if possible
+        try:
+            if root is None:
+                root = tk.Tk()
+                root.withdraw()
+
+            force_window_visibility(root, "Startup Error")
+            messagebox.showerror("Startup Error", str(e))
+        except Exception as gui_error:
+            print(f"Could not show GUI error dialog: {gui_error}", file=sys.stderr)
+            print(f"Error: {error_msg}", file=sys.stderr)
+
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
