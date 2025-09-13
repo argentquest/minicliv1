@@ -7,6 +7,10 @@ import tkinter as tk
 from tkinter import messagebox
 from theme import theme_manager
 
+# Compile regex patterns once for better performance
+CODE_BLOCK_PATTERN = re.compile(r'```(\w+)?\n(.*?)\n```', re.DOTALL)
+CODE_MARKER_PATTERN = re.compile(r'```')
+
 class CodeFragment:
     """Represents a code fragment from AI response."""
     
@@ -47,11 +51,8 @@ class CodeFragmentParser:
         """
         fragments = []
         
-        # Pattern to match code blocks with optional language specifier
-        # Matches: ```language\ncode content\n``` or ```\ncode content\n```
-        pattern = r'```(\w+)?\n(.*?)\n```'
-        
-        matches = re.finditer(pattern, text, re.DOTALL)
+        # Use pre-compiled pattern for better performance
+        matches = CODE_BLOCK_PATTERN.finditer(text)
         
         for match in matches:
             language = match.group(1) or ""
@@ -75,7 +76,7 @@ class CodeFragmentParser:
         Returns:
             True if code fragments are found
         """
-        return '```' in text and text.count('```') >= 2
+        return len(CODE_MARKER_PATTERN.findall(text)) >= 2
 
 class CodeFragmentDialog:
     """Dialog for selecting and copying code fragments."""

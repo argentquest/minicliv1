@@ -9,6 +9,9 @@ from pathlib import Path
 from typing import List
 from dotenv import load_dotenv
 
+# Initialize logging first
+from logger import get_logger, with_context, log_performance, app_logger
+
 from models import AppState, AppConfig, ConversationMessage
 from lazy_file_scanner import CodebaseScanner, LazyCodebaseScanner
 from ai import AIProcessor, create_ai_processor
@@ -26,12 +29,15 @@ class SimpleModernCodeChatApp:
     
     def __init__(self, root: tk.Tk):
         self.root = root
+        self.logger = get_logger("app")
         self.config = AppConfig.get_default()
         self.state = AppState()
         self.scanner = CodebaseScanner()
         self.lazy_scanner = None  # Will be created when needed for large codebases
         
         # Load environment and initialize components
+        self.logger.info("Initializing Code Chat application")
+        self.logger.set_context(component="app", operation="initialization")
         self._load_environment()
         
         # Reload theme preference after dotenv loads .env file
@@ -337,9 +343,13 @@ class SimpleModernCodeChatApp:
             error_msg = str(e)
             self.root.after(0, self._finalize_system_prompt_processing, f"Error executing system prompt: {error_msg}", False)
     
+    @log_performance("process_question_async")  
     def _process_question_async(self, question):
         """Process question asynchronously."""
         try:
+            self.logger.set_context(component="app", operation="process_question")
+            self.logger.info(f"Processing question: {question[:100]}{'...' if len(question) > 100 else ''}")
+            
             # Determine conversation context
             is_first_message = len(self.state.conversation_history) == 0
             needs_codebase_context = is_first_message or self._is_tool_command(question)
@@ -361,6 +371,7 @@ class SimpleModernCodeChatApp:
             
         except Exception as e:
             error_msg = str(e)
+            self.logger.exception(f"Error processing question: {error_msg}")
             self.root.after(0, self._finalize_question_processing, f"Error: {error_msg}", False)
     
     def _get_codebase_content_for_question(self, is_first_message: bool, needs_codebase_context: bool) -> str:
@@ -785,12 +796,29 @@ class SimpleModernCodeChatApp:
 
 
 def main():
-    """Main entry point - handles both CLI and GUI modes."""
+    """Main entry point - handles CLI, Rich CLI, and GUI modes."""
     import sys
     
-    # Check if CLI mode is requested
-    if '--cli' in sys.argv:
-        # CLI mode
+    # Check if Rich CLI mode is requested
+    if '--rich-cli' in sys.argv:
+        try:
+            # Remove --rich-cli from args and launch Rich CLI
+            sys.argv.remove('--rich-cli')
+            from cli_rich import app
+            app()
+        except ImportError as e:
+            print(f"ERROR: Rich CLI dependencies not available: {e}", file=sys.stderr)
+            print("Please install: pip install rich typer", file=sys.stderr)
+            sys.exit(1)
+        except KeyboardInterrupt:
+            print("\nOperation cancelled by user.", file=sys.stderr)
+            sys.exit(1)
+        except Exception as e:
+            print(f"ERROR: Rich CLI error: {str(e)}", file=sys.stderr)
+            sys.exit(1)
+    # Check if standard CLI mode is requested
+    elif '--cli' in sys.argv:
+        # Standard CLI mode
         from cli_interface import CLIInterface
         
         cli = CLIInterface()

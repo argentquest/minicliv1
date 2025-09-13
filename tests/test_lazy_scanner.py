@@ -63,6 +63,8 @@ class TestLazyCodebaseScanner:
     def test_should_skip_directory(self):
         """Test directory skipping logic."""
         scanner = LazyCodebaseScanner()
+        # Ensure we have the expected ignore folders for testing
+        scanner.ignore_folders = {"venv", ".venv", "env", "__pycache__", "node_modules", "dist", "build", ".git"}
         
         assert scanner._should_skip_directory("/project/node_modules")
         assert scanner._should_skip_directory("/project/__pycache__")

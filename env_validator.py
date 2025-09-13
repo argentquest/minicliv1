@@ -153,6 +153,17 @@ class EnvValidator:
                      lambda v: self._validate_int_range(v, 1, 300),
                      "API request timeout in seconds (1-300)", 
                      "advanced")
+        
+        # Logging Configuration
+        self.add_rule('LOG_LEVEL', 
+                     lambda v: self._validate_enum(v, {'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'}),
+                     "Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)", 
+                     "logging")
+        
+        self.add_rule('LOG_DIR', 
+                     self._validate_log_directory,
+                     "Directory for log files (defaults to 'logs')", 
+                     "logging")
     
     def _setup_tool_command_rules(self):
         """Set up validation rules for tool commands."""
@@ -478,6 +489,34 @@ class EnvValidator:
         
         return True, ""
     
+    def _validate_log_directory(self, value: str) -> Tuple[bool, str]:
+        """Validate log directory path."""
+        if not value.strip():
+            return True, ""  # Optional - will use default
+        
+        # Check if path is valid
+        try:
+            log_path = Path(value)
+            
+            # Check for dangerous paths
+            if str(log_path).startswith(('/etc', '/root', '/bin', '/usr')):
+                return False, "Cannot use system directories for logging"
+            
+            # Check if parent directory exists or can be created
+            parent = log_path.parent
+            if not parent.exists():
+                try:
+                    parent.mkdir(parents=True, exist_ok=True)
+                except PermissionError:
+                    return False, f"Cannot create log directory: {value} (permission denied)"
+                except Exception as e:
+                    return False, f"Invalid log directory path: {str(e)}"
+            
+            return True, ""
+            
+        except Exception as e:
+            return False, f"Invalid log directory path: {str(e)}"
+    
     def _generate_suggestion(self, var_name: str, value: str, error_msg: str) -> str:
         """Generate helpful suggestions for common validation errors."""
         suggestions = {
@@ -487,7 +526,9 @@ class EnvValidator:
             'MAX_TOKENS': "Try a value between 1000-4000 for most use cases",
             'TEMPERATURE': "Use 0.7 for balanced creativity, 0.1 for focused responses, 0.9 for creative responses",
             'UI_THEME': "Use 'light', 'dark', or 'auto'",
-            'WINDOW_SIZE': "Use format like '1200x800' for a 1200px wide by 800px tall window"
+            'WINDOW_SIZE': "Use format like '1200x800' for a 1200px wide by 800px tall window",
+            'LOG_LEVEL': "Use DEBUG for development, INFO for normal operation, WARNING/ERROR for production",
+            'LOG_DIR': "Use a relative path like 'logs' or absolute path like '/var/log/minicli'"
         }
         
         if var_name in suggestions:

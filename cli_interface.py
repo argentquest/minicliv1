@@ -11,8 +11,9 @@ from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 
 from lazy_file_scanner import CodebaseScanner, LazyCodebaseScanner
-from ai import AIProcessor
+from ai import AIProcessor, AIProviderFactory
 from system_message_manager import system_message_manager
+from logger import get_logger, log_performance
 
 
 class CLIInterface:
@@ -22,6 +23,7 @@ class CLIInterface:
         self.scanner = CodebaseScanner()
         self.ai_processor = None
         self.verbose = False
+        self.logger = get_logger("cli")
         
     def setup_argument_parser(self) -> argparse.ArgumentParser:
         """Set up and return the argument parser."""
@@ -112,7 +114,10 @@ Examples:
     def setup_ai_processor(self, config: Dict[str, Any]) -> bool:
         """Set up the AI processor with configuration."""
         try:
-            self.ai_processor = AIProcessor(config['api_key'], config['provider'])
+            # Create provider using factory pattern
+            factory = AIProviderFactory()
+            provider = factory.create_provider(config['provider'], config['api_key'])
+            self.ai_processor = AIProcessor(provider)
             
             if not self.ai_processor.validate_api_key():
                 print("ERROR: No API key configured. Set API_KEY in .env file or use --api-key argument.", file=sys.stderr)
@@ -282,9 +287,12 @@ Examples:
             print(f"ERROR: Failed to save output to '{filename}': {str(e)}", file=sys.stderr)
             return False
     
+    @log_performance("cli_execution") 
     def run_cli(self, args: argparse.Namespace) -> int:
         """Run the CLI interface with given arguments."""
         self.verbose = args.verbose
+        self.logger.set_context(component="cli", operation="run")
+        self.logger.info(f"Starting CLI mode with folder: {args.folder}")
         
         self.log("Starting CLI mode...")
         

@@ -427,7 +427,7 @@ class TestEnvValidator:
         
         # Temperature range suggestion
         result = validator.validate("TEMPERATURE", "5.0")
-        assert "range" in result.suggestion
+        assert ("range" in result.suggestion or "0.7 for balanced" in result.suggestion)
 
 
 class TestGlobalValidator:

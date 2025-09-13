@@ -1,6 +1,122 @@
 # 🖥️ CLI Usage Guide
 
-The Code Chat AI application now supports headless operation via a command-line interface (CLI), making it perfect for automation, CI/CD pipelines, and scripting workflows.
+Code Chat AI now offers **three** different ways to run the application - providing flexibility for every use case from interactive development to CI/CD automation.
+
+## 🎯 Quick Mode Selection
+
+- **🖥️ GUI Mode**: `python minicli.py` (Default - Full graphical interface)
+- **🔧 Standard CLI**: `python minicli.py --cli` (Original command-line interface)
+- **✨ Rich CLI**: `python codechat-rich.py` (Enhanced beautiful command-line interface)
+
+---
+
+## ✨ NEW: Rich CLI Mode (Enhanced)
+
+The **Rich CLI** provides a beautiful, modern terminal experience with syntax highlighting, progress bars, interactive prompts, and rich formatting while maintaining full automation capabilities.
+
+### 🚀 Quick Start - Rich CLI
+```bash
+# Interactive mode - prompts for everything step by step
+python codechat-rich.py interactive
+
+# Or call analyze without parameters for interactive prompts
+python codechat-rich.py analyze
+
+# Direct usage with parameters
+python codechat-rich.py analyze ./src "What does this code do?"
+
+# Or via main script
+python minicli.py --rich-cli analyze ./src "What does this code do?"
+```
+
+### Rich CLI Commands
+
+#### 🤖 analyze - Main analysis command
+```bash
+python codechat-rich.py analyze [FOLDER] [QUESTION] [OPTIONS]
+
+# Basic usage
+python codechat-rich.py analyze ./src "What does this code do?"
+
+# Advanced usage with all Rich CLI features
+python codechat-rich.py analyze ./src "Find security issues" \
+  --model gpt-4 \
+  --provider openrouter \
+  --system-prompt security_expert \
+  --include "*.py,*.js" \
+  --exclude "test_*,*_test.py" \
+  --output json \
+  --save-to results.json \
+  --lazy \
+  --tree \
+  --validate
+```
+
+#### Rich CLI Analysis Options:
+- `--api-key, -k`: API key (overrides .env file)
+- `--model, -m`: AI model to use
+- `--provider, -p`: AI provider (openrouter, tachyon)
+- `--system-prompt, -s`: System prompt name (e.g., 'security_expert')
+- `--include, -i`: File patterns to include (comma-separated)
+- `--exclude, -e`: File patterns to exclude (comma-separated)
+- `--output, -o`: Output format (structured, json)
+- `--save-to, -f`: Save output to file
+- `--lazy`: Use lazy loading for large codebases
+- `--tree/--no-tree`: Show/hide beautiful file tree (default: show)
+- `--validate/--no-validate`: Validate/skip environment validation (default: validate)
+
+#### 🔧 config - Configuration management
+```bash
+# Validate current configuration with detailed feedback
+python codechat-rich.py config --validate
+
+# Show current configuration in beautiful table
+python codechat-rich.py config --show
+
+# Interactive configuration setup with prompts
+python codechat-rich.py config --interactive
+```
+
+#### 🤖 models - Model management
+```bash
+# List available models in beautiful table
+python codechat-rich.py models
+
+# Show models for specific provider
+python codechat-rich.py models --provider openrouter
+
+# Test a specific model with connection validation
+python codechat-rich.py models --test gpt-4
+```
+
+#### 🎯 interactive - Fully interactive analysis mode
+```bash
+# Launch guided interactive analysis with step-by-step prompts
+python codechat-rich.py interactive
+```
+
+#### 📋 version - Version information
+```bash
+python codechat-rich.py version
+```
+
+### Rich CLI Features
+- 🎨 **Beautiful Output**: Syntax-highlighted code and JSON, rich tables and panels
+- 📊 **Progress Bars**: Real-time progress indicators with time elapsed  
+- 🌳 **File Tree View**: Visual representation of selected files with icons
+- 🎯 **Interactive Prompts**: Step-by-step guided setup with smart suggestions
+- 📈 **Live Updates**: Real-time processing status during AI requests
+- 🔍 **Environment Validation**: Comprehensive configuration validation with suggestions
+- 🎭 **Markdown Rendering**: Beautiful formatting of AI responses
+- 🚀 **Smart Defaults**: Intelligent suggestions based on project structure
+- 📝 **Question Templates**: Pre-built analysis templates for common tasks
+- 🔧 **Interactive Configuration**: Guided setup for complex options
+
+---
+
+## 🔧 Standard CLI Mode
+
+The original command-line interface using argparse, perfect for automation and scripting.
 
 ## 🚀 Quick Start
 

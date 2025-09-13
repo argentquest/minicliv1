@@ -1,25 +1,171 @@
-API_KEY="XXXXXXXXXXXXXX"
+# =============================================================================
+# CODE CHAT AI - ENVIRONMENT CONFIGURATION TEMPLATE
+# =============================================================================
+# Copy this file to .env and configure your settings
+# Remove the "Template" suffix: .envTemplate -> .env
+
+# =============================================================================
+# 🔑 API CONFIGURATION (REQUIRED)
+# =============================================================================
+
+# Primary API Key - REQUIRED for all AI operations
+# Get your key from: https://openrouter.ai/ or your chosen provider
+API_KEY="your_api_key_here"
+
+# Alternative OpenRouter-specific API key (optional if API_KEY is set)
+# Format: sk-or-v1-... (starts with sk-or-)
+OPENROUTER_API_KEY=""
+
+# AI Provider Selection
+# Options: openrouter, tachyon, custom
+PROVIDER="openrouter"
+
+# API URLs (usually don't need to change these)
 API_URL="https://api.openrouter.ai/v1/chat/completions"
 TOKEN_URL="https://api.openrouter.ai/v1/token"
-TOKEN_USE_ID="DD"
-TOKEN_PASSWORD="dd1234"
-MODELS="deepseek/deepseek-chat-v3.1,,,,google/gemini-2.5-flash,,,,x-ai/grok-code-fast-1"
-DEFAULT_MODEL="x-ai/grok-code-fast-1"
-IGNORE_FOLDERS="venv,,,,.venv,,,,env,,,,.env,,,,__pycache__"
-CONFIG1="example_value"
-CONFIG2="another_value"
-CONFIG4="more_config"
-CONFIG5="final_config"
 
-TOOL1="Fix and debug the following code:"
-TOOL2="Explain this code in detail, including its purpose and how it works:"
-TOOL3="Generate comprehensive unit tests for the following code:"
-TOOL4="Refactor this code to improve readability, maintainability, and performance:"
-TOOL5="Review this code for security vulnerabilities and potential issues:"
-TOOL6="Add proper documentation and docstrings to this code:"
-TOOL7="Analyze the performance of this code and suggest optimizations:"
-TOOL8="Check this code for style guide compliance and best practices:"
-TOOL9="Convert and translate this code to a different programming language:"
-TOOL10="Help me implement this feature or functionality:"
+# Token authentication (if required by provider)
+TOKEN_USE_ID=""
+TOKEN_PASSWORD=""
 
-PROVIDER="openrouter"
+# =============================================================================
+# 🤖 MODEL CONFIGURATION (REQUIRED)
+# =============================================================================
+
+# Default model for analysis (REQUIRED)
+# Format: provider/model-name (e.g., openai/gpt-4, anthropic/claude-3-sonnet)
+DEFAULT_MODEL="openai/gpt-3.5-turbo"
+
+# Available models list (REQUIRED) - comma-separated
+# These will appear in model selection dropdown and Rich CLI
+MODELS="openai/gpt-3.5-turbo,openai/gpt-4,openai/gpt-4-turbo,anthropic/claude-3-haiku,anthropic/claude-3-sonnet,anthropic/claude-3-opus"
+
+# =============================================================================
+# ⚙️ AI PARAMETERS (OPTIONAL)
+# =============================================================================
+
+# Maximum tokens for AI responses (1-16000)
+# Higher = longer responses, more cost
+MAX_TOKENS="4000"
+
+# Temperature: Controls creativity/randomness (0.0-2.0)
+# 0.0 = deterministic, 2.0 = very creative
+TEMPERATURE="0.7"
+
+# Top-p nucleus sampling (0.0-1.0)
+# Lower = more focused responses
+TOP_P="1.0"
+
+# Frequency penalty (-2.0 to 2.0)
+# Positive = discourage repetition
+FREQUENCY_PENALTY="0.0"
+
+# =============================================================================
+# 🎨 USER INTERFACE CONFIGURATION
+# =============================================================================
+
+# UI Theme
+# Options: light, dark, auto
+UI_THEME="auto"
+
+# Main window size (optional)
+# Format: WIDTHxHEIGHT (e.g., 1200x800)
+WINDOW_SIZE="1200x800"
+
+# =============================================================================
+# 📁 FILE SYSTEM CONFIGURATION
+# =============================================================================
+
+# Folders to ignore during codebase scanning (comma-separated)
+IGNORE_FOLDERS="venv,.venv,env,.env,__pycache__,node_modules,dist,build,.git,.pytest_cache,.mypy_cache,coverage_html,htmlcov"
+
+# Supported file extensions (comma-separated, with dots)
+SUPPORTED_EXTENSIONS=".py,.js,.ts,.jsx,.tsx,.java,.cpp,.c,.h,.cs,.go,.rs,.php,.rb,.swift,.kt,.scala,.r,.sql,.html,.css,.scss,.less,.json,.xml,.yaml,.yml,.toml,.md,.txt"
+
+# Maximum file size to process (in bytes)
+# 10MB = 10485760, 50MB = 52428800, 100MB = 104857600
+MAX_FILE_SIZE="10485760"
+
+# =============================================================================
+# 💬 SYSTEM MESSAGE CONFIGURATION
+# =============================================================================
+
+# Current system message file (should exist in project directory)
+# Examples: systemmessage_default.txt, systemmessage_security.txt
+CURRENT_SYSTEM_PROMPT="systemmessage_default.txt"
+
+# =============================================================================
+# 🛠️ TOOL COMMAND TEMPLATES
+# =============================================================================
+# These are prompts for different analysis tools
+# Used by the pattern matching system to detect tool commands
+
+# Code analysis and explanation tools
+TOOL_EXPLAIN="Explain this code in detail, including its purpose and how it works:"
+TOOL_DOCSTRING="Add proper documentation and docstrings to this code:"
+TOOL_REFACTOR="Refactor this code to improve readability, maintainability, and performance:"
+
+# Quality and testing tools
+TOOL_LINT="Fix and debug the following code:"
+TOOL_TEST="Generate comprehensive unit tests for the following code:"
+TOOL_STYLEGUIDE="Check this code for style guide compliance and best practices:"
+
+# Performance and security tools
+TOOL_PERFORMANCE="Analyze the performance of this code and suggest optimizations:"
+TOOL_SECURITY="Review this code for security vulnerabilities and potential issues:"
+
+# Development tools
+TOOL_DEBUG="Help debug and fix issues in this code:"
+TOOL_CONVERT="Convert and translate this code to a different programming language:"
+
+
+# =============================================================================
+# 📊 LOGGING CONFIGURATION
+# =============================================================================
+
+# Logging level
+# Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+LOG_LEVEL="INFO"
+
+# Directory for log files (relative to project root)
+LOG_DIR="logs"
+
+# =============================================================================
+# 🚀 ADVANCED CONFIGURATION
+# =============================================================================
+
+# Cache size for file content (1-1000)
+CACHE_SIZE="100"
+
+# API request timeout in seconds (1-300)
+REQUEST_TIMEOUT="60"
+# =============================================================================
+# 🔍 VALIDATION NOTES
+# =============================================================================
+# The application includes comprehensive environment validation that will:
+# - Check for required variables (API_KEY, DEFAULT_MODEL, MODELS)
+# - Validate formats (model names, API keys, etc.)
+# - Provide helpful suggestions for fixes
+# - Show warnings for unknown variables
+#
+# Run validation with:
+# python codechat-rich.py config --validate
+#
+# =============================================================================
+# 📚 QUICK REFERENCE
+# =============================================================================
+#
+# GETTING STARTED:
+# 1. Set API_KEY with your OpenRouter or provider API key
+# 2. Configure DEFAULT_MODEL and MODELS for your preferred AI models
+# 3. Adjust IGNORE_FOLDERS for your project structure
+# 4. Save file as .env (remove Template from filename)
+# 5. Test with: python codechat-rich.py config --show
+#
+# COMMON MODEL OPTIONS:
+# - OpenAI: openai/gpt-3.5-turbo, openai/gpt-4, openai/gpt-4-turbo
+# - Anthropic: anthropic/claude-3-haiku, anthropic/claude-3-sonnet, anthropic/claude-3-opus
+# - Google: google/gemini-pro, google/gemini-2.0-flash-exp
+# - Others: meta-llama/llama-3.1-8b-instruct, deepseek/deepseek-chat
+#
+# =============================================================================

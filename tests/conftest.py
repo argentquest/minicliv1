@@ -4,7 +4,7 @@ Pytest configuration and shared fixtures for the test suite.
 import pytest
 import tempfile
 import os
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock, MagicMock, patch
 from pathlib import Path
 
 from models import AppConfig, AppState, ConversationMessage
@@ -120,7 +120,7 @@ def mock_requests_post():
         }
     }
     
-    with pytest.mock.patch('requests.post', return_value=mock_response) as mock_post:
+    with patch('requests.post', return_value=mock_response) as mock_post:
         yield mock_post
 
 

@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(.venvScriptspython.exe -m pytest tests/test_lazy_scanner.py::TestLazyCodebaseScanner::test_should_skip_directory -v)",
+      "Bash(venv/Scripts/python.exe -m pytest tests/test_lazy_scanner.py::TestLazyCodebaseScanner::test_should_skip_directory -v)",
+      "Bash(venv/Scripts/python.exe -m pytest tests/test_env_validator.py::TestEnvValidator::test_suggestion_generation -v)",
+      "Bash(venv/Scripts/python.exe -m pytest tests/test_cli_interface.py::TestCLIIntegration::test_full_cli_workflow_success -v)",
+      "Bash(venv/Scripts/python.exe -m pytest tests/ --tb=no -q)",
+      "Bash(venv/Scripts/python.exe codechat-rich.py:*)"
     ],
     "deny": []
   }
