@@ -96,6 +96,57 @@
 
 ---
 
+## 🚀 Quick Start Workflow
+
+```mermaid
+flowchart TD
+    A[Start Setup] --> B[Install Python 3.7+]
+    B --> C[Clone Repository]
+    C --> D[Install Dependencies<br/>pip install -r requirements.txt]
+    D --> E[Setup API Keys<br/>Create .env file]
+    E --> F[Launch Application<br/>python modern_main.py]
+    F --> G[Configure Settings<br/>API keys, model selection]
+    G --> H[Select Codebase<br/>Browse directory]
+    H --> I[Choose Expert Mode<br/>System message dropdown]
+    I --> J[Start Chatting<br/>Ask questions about code]
+    J --> K[Ready to Use!]
+
+    style A fill:#e1f5fe
+    style K fill:#c8e6c9
+```
+
+---
+
+## 🏗️ Architecture Overview
+
+```mermaid
+graph TB
+    A[User Interface Layer] --> B[Application Core]
+    B --> C[AI Providers]
+    B --> D[File Scanners]
+    B --> E[State Management]
+
+    A --> F[GUI Mode<br/>modern_main.py]
+    A --> G[CLI Modes<br/>minicli.py, codechat-rich.py]
+    A --> H[API Server<br/>fastapi_server.py]
+
+    C --> I[OpenRouter Provider<br/>openrouter_provider.py]
+    C --> J[Tachyon Provider<br/>tachyon_provider.py]
+
+    D --> K[Standard Scanner<br/>file_scanner.py]
+    D --> L[Lazy Scanner<br/>lazy_file_scanner.py]
+
+    E --> M[Data Models<br/>models.py]
+    E --> N[Environment<br/>env_manager.py]
+    E --> O[Logging<br/>logger.py]
+
+    B --> P[AI Processing<br/>ai.py]
+    B --> Q[Security Utils<br/>security_utils.py]
+    B --> R[Pattern Matching<br/>pattern_matcher.py]
+```
+
+---
+
 ## ✨ Features
 
 ### 🤖 **AI-Powered Code Analysis**
@@ -303,7 +354,7 @@ code-chat-ai/
 │   ├── conversation_history_tab.py  # History management
 │   ├── pattern_matcher.py      # Tool command pattern matching
 │   ├── security_utils.py       # Security utilities for API keys
-│   └── api_client.igmore       # API client utilities
+│   └── api_client.py       # API client utilities
 │
 ├── 📁 Testing
 │   ├── tests/                  # Test suite directory

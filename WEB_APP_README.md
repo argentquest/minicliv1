@@ -4,6 +4,65 @@ A modern, user-friendly web interface for Code Chat AI that provides comprehensi
 
 ## 🌟 Features
 
+## Web Application Architecture
+
+```mermaid
+graph TB
+    subgraph "User Browser"
+        UI[NiceGUI Frontend<br/>http://localhost:8080]
+    end
+
+    subgraph "Web Server"
+        WS[NiceGUI Server<br/>nicegui_frontend.py]
+    end
+
+    subgraph "API Server"
+        API[FastAPI Backend<br/>http://localhost:8000]
+        AS[Analysis Service<br/>fastapi_server.py]
+    end
+
+    subgraph "Core Application"
+        AI[AI Processing<br/>ai.py]
+        FS[File Scanners<br/>file_scanner.py]
+        SM[System Messages<br/>system_message_manager.py]
+    end
+
+    subgraph "AI Providers"
+        OR[OpenRouter]
+        TA[Tachyon]
+    end
+
+    UI --> WS
+    WS --> API
+    API --> AS
+    AS --> AI
+    AS --> FS
+    AS --> SM
+    AI --> OR
+    AI --> TA
+
+    style UI fill:#e1f5fe
+    style API fill:#f3e5f5
+    style AI fill:#fff3e0
+```
+
+## User Workflow
+
+```mermaid
+flowchart TD
+    A[User Opens Web App] --> B[Configure Parameters<br/>Basic, AI, Files, Output tabs]
+    B --> C[Click Analyze Code]
+    C --> D[Frontend sends request to FastAPI]
+    D --> E[Backend processes analysis]
+    E --> F[AI provider called]
+    F --> G[Results returned to frontend]
+    G --> H[Results open in new browser tab]
+    H --> I[User views formatted results]
+
+    style A fill:#e1f5fe
+    style I fill:#c8e6c9
+```
+
 ### 🎨 Modern Web Interface
 - **Tabbed Interface**: Organized parameter groups for easy navigation
 - **Clean Design**: Modern, responsive UI with custom styling

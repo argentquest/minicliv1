@@ -10,6 +10,51 @@ The test suite includes:
 - **Parameter validation tests** for both JSON and query parameter endpoints
 - **Error handling tests** for various failure scenarios
 
+## Test Execution Flow
+
+```mermaid
+flowchart TD
+    A[Test Execution Starts] --> B{Test Mode?}
+    B -->|Mocked Tests| C[Load Test Fixtures]
+    B -->|Real Server Tests| D[Check Server Running<br/>http://localhost:8000]
+
+    C --> E[Mock CLI Interface]
+    D --> F[Verify API Keys Configured]
+
+    E --> G[Execute Test Suite]
+    F --> G
+
+    G --> H{Test Type?}
+    H -->|Health Check| I[Test GET /health]
+    H -->|Models| J[Test GET /models]
+    H -->|Providers| K[Test GET /providers]
+    H -->|Analysis| L{Endpoint Type?}
+
+    L -->|POST /analyze| M[Test JSON Body Request]
+    L -->|GET /analyze| N[Test Query Parameters]
+
+    M --> O[Validate Parameters]
+    N --> O
+
+    O --> P{Validation Result?}
+    P -->|Valid| Q[Process Analysis]
+    P -->|Invalid| R[Test Error Response]
+
+    Q --> S[Return Success Response]
+    R --> T[Return Error Response]
+
+    S --> U[Test Complete]
+    T --> U
+
+    U --> V{All Tests Pass?}
+    V -->|Yes| W[Report Success]
+    V -->|No| X[Report Failures]
+
+    style A fill:#e1f5fe
+    style W fill:#c8e6c9
+    style X fill:#ffcdd2
+```
+
 ## 🧪 Test Files
 
 ### `test_fastapi_integration.py`

@@ -8,6 +8,25 @@ Code Chat AI now offers **three** different ways to run the application - provid
 - **🔧 Standard CLI**: `python minicli.py --cli` (Original command-line interface)
 - **✨ Rich CLI**: `python codechat-rich.py` (Enhanced beautiful command-line interface)
 
+## 📊 CLI Mode Selection Guide
+
+```mermaid
+flowchart TD
+    A[Choose CLI Mode] --> B{User Experience?}
+    B -->|Interactive & Beautiful| C[Rich CLI<br/>codechat-rich.py]
+    B -->|Scripting & Automation| D{Use Case?}
+    D -->|Simple Scripts| E[Standard CLI<br/>minicli.py --cli]
+    D -->|Complex Automation| F[API Server<br/>fastapi_server.py]
+
+    C --> G[Features: Progress bars,<br/>syntax highlighting,<br/>interactive prompts]
+    E --> H[Features: Argparse,<br/>JSON output,<br/>CI/CD integration]
+    F --> I[Features: REST API,<br/>programmatic access,<br/>webhooks]
+
+    style C fill:#e1f5fe
+    style E fill:#fff3e0
+    style F fill:#f3e5f5
+```
+
 ---
 
 ## ✨ NEW: Rich CLI Mode (Enhanced)

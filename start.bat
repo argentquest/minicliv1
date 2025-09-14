@@ -1,4 +1,4 @@
-@echo off
+
 REM Code Chat AI - Startup Launcher Batch File
 REM This batch file launches the interactive startcommands launcher
 
@@ -7,6 +7,7 @@ echo ===========================================
 echo   🤖 Code Chat AI - Startup Launcher
 echo ===========================================
 echo.
+
 
 REM Check if we're in the right directory
 if not exist "startcommands" (

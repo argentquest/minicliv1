@@ -79,11 +79,13 @@ class RichCLIInterface:
     """Enhanced CLI interface using Rich and Typer for beautiful terminal output."""
     
     def __init__(self):
+        self.logger = get_logger("rich_cli")
+        self.logger.info("Initializing RichCLIInterface")
         self.scanner = CodebaseScanner()
         self.lazy_scanner = None
         self.ai_processor = None
-        self.logger = get_logger("rich_cli")
         self.config = {}
+        self.logger.info("RichCLIInterface initialized successfully")
         
     def setup_lazy_scanner(self):
         """Initialize lazy scanner for large codebases."""
@@ -92,6 +94,7 @@ class RichCLIInterface:
     
     def print_welcome_banner(self):
         """Display a beautiful welcome banner."""
+        self.logger.info("Displaying welcome banner")
         banner = Panel.fit(
             "[bold blue]Code Chat AI[/bold blue]\n[italic]Rich + Typer Enhanced CLI[/italic]",
             border_style="blue",
@@ -99,6 +102,7 @@ class RichCLIInterface:
         )
         console.print(banner)
         console.print()
+        self.logger.info("Welcome banner displayed successfully")
     
     def print_config_summary(self, config: Dict[str, Any]):
         """Display configuration summary in a nice table."""
@@ -123,128 +127,186 @@ class RichCLIInterface:
     
     def validate_environment(self) -> bool:
         """Validate environment configuration with rich output."""
+        self.logger.info("Starting environment validation")
         console.print("[yellow]Validating environment configuration...[/yellow]")
-        
-        # Load environment variables
-        load_dotenv()
-        env_vars = {
-            'API_KEY': os.getenv('API_KEY', ''),
-            'PROVIDER': os.getenv('PROVIDER', ''),
-            'DEFAULT_MODEL': os.getenv('DEFAULT_MODEL', ''),
-            'MODELS': os.getenv('MODELS', ''),
-        }
-        
-        # Validate using our comprehensive validator
-        results = env_validator.validate_all(env_vars)
-        
-        # Display results
-        has_errors = False
-        for var_name, result in results.items():
-            if not result.is_valid:
-                has_errors = True
-                console.print(f"[red]ERROR {var_name}:[/red] {result.error_message}")
-                if result.suggestion:
-                    console.print(f"   [dim]SUGGESTION: {result.suggestion}[/dim]")
-            elif result.warning_message:
-                console.print(f"[yellow]WARNING {var_name}:[/yellow] {result.warning_message}")
-        
-        if not has_errors:
-            console.print("[green]SUCCESS: Environment configuration looks good![/green]")
-        
-        console.print()
-        return not has_errors
-    
-    def load_configuration(self, 
-                         api_key: Optional[str] = None,
-                         provider: Optional[str] = None, 
-                         model: Optional[str] = None) -> Dict[str, Any]:
-        """Load configuration with rich progress indication."""
-        
-        with Status("[cyan]Loading configuration...[/cyan]", spinner="dots") as status:
-            # Load .env file
+
+        try:
+            # Load environment variables
             load_dotenv()
-            
-            config = {
-                'api_key': os.getenv('API_KEY', ''),
-                'provider': os.getenv('PROVIDER', 'openrouter'),
-                'model': os.getenv('DEFAULT_MODEL', 'openai/gpt-3.5-turbo'),
-                'models': [m.strip() for m in os.getenv('MODELS', '').split(',') if m.strip()]
+            env_vars = {
+                'API_KEY': os.getenv('API_KEY', ''),
+                'PROVIDER': os.getenv('PROVIDER', ''),
+                'DEFAULT_MODEL': os.getenv('DEFAULT_MODEL', ''),
+                'MODELS': os.getenv('MODELS', ''),
             }
-            
-            # Override with CLI arguments
-            if api_key:
-                config['api_key'] = api_key
-            if provider:
-                config['provider'] = provider
-            if model:
-                config['model'] = model
-            
-            self.config = config
-            
-        return config
+
+            self.logger.debug(f"Loaded environment variables: {[k for k in env_vars.keys()]}")
+
+            # Validate using our comprehensive validator
+            results = env_validator.validate_all(env_vars)
+
+            # Display results
+            has_errors = False
+            for var_name, result in results.items():
+                if not result.is_valid:
+                    has_errors = True
+                    self.logger.error(f"Environment validation failed for {var_name}: {result.error_message}")
+                    console.print(f"[red]ERROR {var_name}:[/red] {result.error_message}")
+                    if result.suggestion:
+                        console.print(f"   [dim]SUGGESTION: {result.suggestion}[/dim]")
+                elif result.warning_message:
+                    self.logger.warning(f"Environment warning for {var_name}: {result.warning_message}")
+                    console.print(f"[yellow]WARNING {var_name}:[/yellow] {result.warning_message}")
+
+            if not has_errors:
+                self.logger.info("Environment validation completed successfully")
+                console.print("[green]SUCCESS: Environment configuration looks good![/green]")
+            else:
+                self.logger.error("Environment validation failed with errors")
+
+            console.print()
+            return not has_errors
+
+        except Exception as e:
+            self.logger.exception(f"Unexpected error during environment validation: {str(e)}")
+            console.print(f"[red]ERROR: Unexpected error during validation: {str(e)}[/red]")
+            console.print()
+            return False
+    
+    def load_configuration(self,
+                          api_key: Optional[str] = None,
+                          provider: Optional[str] = None,
+                          model: Optional[str] = None) -> Dict[str, Any]:
+        """Load configuration with rich progress indication."""
+        self.logger.info("Loading configuration")
+
+        try:
+            with Status("[cyan]Loading configuration...[/cyan]", spinner="dots") as status:
+                # Load .env file
+                load_dotenv()
+
+                config = {
+                    'api_key': os.getenv('API_KEY', ''),
+                    'provider': os.getenv('PROVIDER', 'openrouter'),
+                    'model': os.getenv('DEFAULT_MODEL', 'openai/gpt-3.5-turbo'),
+                    'models': [m.strip() for m in os.getenv('MODELS', '').split(',') if m.strip()]
+                }
+
+                self.logger.debug(f"Base configuration loaded: provider={config['provider']}, "
+                                f"model={config['model']}, models_count={len(config['models'])}")
+
+                # Override with CLI arguments
+                if api_key:
+                    config['api_key'] = api_key
+                    self.logger.info("API key overridden from CLI argument")
+                if provider:
+                    config['provider'] = provider
+                    self.logger.info(f"Provider overridden from CLI argument: {provider}")
+                if model:
+                    config['model'] = model
+                    self.logger.info(f"Model overridden from CLI argument: {model}")
+
+                self.config = config
+                self.logger.info("Configuration loaded successfully")
+
+            return config
+
+        except Exception as e:
+            self.logger.exception(f"Error loading configuration: {str(e)}")
+            raise
     
     def setup_ai_processor(self, config: Dict[str, Any]) -> bool:
         """Set up AI processor with rich status indication."""
+        self.logger.info(f"Setting up AI processor with provider: {config['provider']}")
+
         try:
             with Status("[cyan]Initializing AI processor...[/cyan]", spinner="dots"):
                 factory = AIProviderFactory()
                 provider = factory.create_provider(config['provider'], config['api_key'])
                 self.ai_processor = AIProcessor(provider)
-                
+
+                self.logger.debug(f"AI provider created: {config['provider']}")
+                self.logger.debug("AI processor instance created")
+
                 if not self.ai_processor.validate_api_key():
+                    self.logger.error("API key validation failed")
                     console.print("[red]ERROR: No valid API key configured.[/red]")
                     console.print("[dim]Set API_KEY in .env file or use --api-key option.[/dim]")
                     return False
-            
+
+            self.logger.info(f"AI processor initialized successfully with {config['provider']} provider")
             console.print(f"[green]SUCCESS: AI processor initialized with {config['provider']} provider[/green]")
             return True
-            
+
         except Exception as e:
+            self.logger.exception(f"Failed to initialize AI processor: {str(e)}")
             console.print(f"[red]ERROR: Failed to initialize AI processor: {str(e)}[/red]")
             return False
     
     def setup_system_prompt(self, system_prompt_name: Optional[str]) -> bool:
         """Set up system prompt with validation."""
         if not system_prompt_name:
+            self.logger.info("Using default system prompt")
             console.print("[dim]Using default system prompt[/dim]")
             return True
-        
+
         filename = f"systemmessage_{system_prompt_name}.txt"
-        
+        self.logger.info(f"Setting up system prompt: {system_prompt_name} (file: {filename})")
+
         if not os.path.exists(filename):
+            self.logger.error(f"System prompt file not found: {filename}")
             console.print(f"[red]ERROR: System prompt file '{filename}' not found.[/red]")
             return False
-        
-        success = system_message_manager.set_current_system_message_file(filename)
-        if success:
-            console.print(f"[green]SUCCESS: Using system prompt: {system_prompt_name}[/green]")
-            return True
-        else:
-            console.print(f"[red]ERROR: Failed to load system prompt file '{filename}'.[/red]")
+
+        try:
+            success = system_message_manager.set_current_system_message_file(filename)
+            if success:
+                self.logger.info(f"System prompt set successfully: {system_prompt_name}")
+                console.print(f"[green]SUCCESS: Using system prompt: {system_prompt_name}[/green]")
+                return True
+            else:
+                self.logger.error(f"Failed to set system prompt file: {filename}")
+                console.print(f"[red]ERROR: Failed to load system prompt file '{filename}'.[/red]")
+                return False
+        except Exception as e:
+            self.logger.exception(f"Exception while setting system prompt: {str(e)}")
+            console.print(f"[red]ERROR: Exception while loading system prompt: {str(e)}[/red]")
             return False
     
-    def scan_codebase_with_progress(self, 
-                                   folder_path: str,
-                                   include_patterns: Optional[str] = None,
-                                   exclude_patterns: Optional[str] = None,
-                                   use_lazy: bool = False) -> tuple[List[str], str]:
+    def scan_codebase_with_progress(self,
+                                    folder_path: str,
+                                    include_patterns: Optional[str] = None,
+                                    exclude_patterns: Optional[str] = None,
+                                    use_lazy: bool = False) -> tuple[List[str], str]:
         """Scan codebase with beautiful progress indication."""
-        
+        self.logger.info(f"Starting codebase scan: folder={folder_path}, lazy={use_lazy}")
+        self.logger.debug(f"Include patterns: {include_patterns}")
+        self.logger.debug(f"Exclude patterns: {exclude_patterns}")
+
         # Validate directory first
         is_valid, error_msg = self.scanner.validate_directory(folder_path)
         if not is_valid:
+            self.logger.error(f"Directory validation failed: {error_msg}")
             console.print(f"[red]ERROR: {error_msg}[/red]")
             return [], ""
-        
+
+        self.logger.info(f"Directory validation passed for: {folder_path}")
         console.print(f"[cyan]Scanning directory: {folder_path}[/cyan]")
-        
+
         try:
             if use_lazy:
-                return self._scan_lazy_with_progress(folder_path, include_patterns, exclude_patterns)
+                self.logger.info("Using lazy scanning mode")
+                result = self._scan_lazy_with_progress(folder_path, include_patterns, exclude_patterns)
             else:
-                return self._scan_standard_with_progress(folder_path, include_patterns, exclude_patterns)
-                
+                self.logger.info("Using standard scanning mode")
+                result = self._scan_standard_with_progress(folder_path, include_patterns, exclude_patterns)
+
+            files_scanned = len(result[0]) if result[0] else 0
+            self.logger.info(f"Codebase scan completed successfully: {files_scanned} files scanned")
+            return result
+
         except Exception as e:
+            self.logger.exception(f"Failed to scan directory {folder_path}: {str(e)}")
             console.print(f"[red]ERROR: Failed to scan directory: {str(e)}[/red]")
             return [], ""
     
@@ -396,23 +458,29 @@ class RichCLIInterface:
     
     def process_question_with_status(self, question: str, codebase_content: str, model: str) -> Optional[Dict[str, Any]]:
         """Process question with beautiful status indication and real-time updates."""
-        
+        self.logger.info(f"Starting AI question processing with model: {model}")
+        self.logger.debug(f"Question length: {len(question)} characters")
+        self.logger.debug(f"Codebase content length: {len(codebase_content)} characters")
+
         console.print(f"[cyan]AI Processing with {model}...[/cyan]")
         console.print(f"[dim]Question: {question[:100]}{'...' if len(question) > 100 else ''}[/dim]")
         console.print()
-        
+
         try:
             import time
             start_time = time.time()
-            
+            self.logger.debug("Starting AI processing timer")
+
             # Create a live display for real-time updates
             with Live(self._create_processing_layout(), refresh_per_second=4) as live:
-                
+
                 def update_callback(response: str, status: str):
                     """Callback to update live display with AI processing status."""
+                    self.logger.debug(f"AI processing update: status={status}, response_length={len(response) if response else 0}")
                     live.update(self._create_processing_layout(status, len(response) if response else 0))
-                
+
                 # Process with AI
+                self.logger.info("Sending question to AI processor")
                 ai_response = self.ai_processor.process_question(
                     question=question,
                     conversation_history=[],
@@ -420,16 +488,18 @@ class RichCLIInterface:
                     model=model,
                     update_callback=update_callback
                 )
-                
+
                 # Final update
                 end_time = time.time()
                 processing_time = end_time - start_time
+                self.logger.info(f"AI processing completed in {processing_time:.2f} seconds")
                 live.update(self._create_processing_layout("Complete!", len(ai_response), processing_time))
-            
+
+            self.logger.info(f"Question processing successful: response_length={len(ai_response)}")
             console.print(f"[green]SUCCESS: Processing completed in {processing_time:.2f} seconds[/green]")
             console.print()
-            
-            return {
+
+            result = {
                 'response': ai_response,
                 'model': model,
                 'provider': str(self.ai_processor.provider.__class__.__name__),
@@ -438,8 +508,12 @@ class RichCLIInterface:
                 'response_length': len(ai_response),
                 'question_length': len(question)
             }
-            
+
+            self.logger.debug(f"Returning result: model={model}, processing_time={processing_time:.2f}s")
+            return result
+
         except Exception as e:
+            self.logger.exception(f"Failed to process question: {str(e)}")
             console.print(f"[red]ERROR: Failed to process question: {str(e)}[/red]")
             return None
     
@@ -506,34 +580,44 @@ class RichCLIInterface:
     
     def save_output_with_confirmation(self, output: str, filename: str) -> bool:
         """Save output to file with rich confirmation and progress."""
+        self.logger.info(f"Attempting to save output to file: {filename}")
+        self.logger.debug(f"Output length: {len(output)} characters")
+
         try:
             # Check if file exists
             if os.path.exists(filename):
+                self.logger.info(f"File {filename} exists, prompting for overwrite confirmation")
                 if not Confirm.ask(f"[yellow]File '{filename}' exists. Overwrite?[/yellow]"):
+                    self.logger.info("User cancelled file save operation")
                     console.print("[dim]Save cancelled.[/dim]")
                     return False
-            
+
             # Save with progress indication
+            self.logger.debug("Starting file save operation")
             with Status(f"[cyan]Saving to {filename}...[/cyan]", spinner="dots"):
                 from file_lock import safe_file_operation
-                
+
                 with safe_file_operation(filename, timeout=10.0):
                     with open(filename, 'w', encoding='utf-8') as f:
                         f.write(output)
-            
-            console.print(f"[green]SUCCESS: Output saved to: {filename}[/green]")
-            
+
+            self.logger.info(f"File saved successfully: {filename}")
+
             # Show file size
             file_size = os.path.getsize(filename)
             if file_size > 1024:
                 size_str = f"{file_size / 1024:.1f} KB"
             else:
                 size_str = f"{file_size} bytes"
+
+            self.logger.debug(f"File size: {size_str}")
+            console.print(f"[green]SUCCESS: Output saved to: {filename}[/green]")
             console.print(f"[dim]File size: {size_str}[/dim]")
-            
+
             return True
-            
+
         except Exception as e:
+            self.logger.exception(f"Failed to save output to {filename}: {str(e)}")
             console.print(f"[red]ERROR: Failed to save output: {str(e)}[/red]")
             return False
     
@@ -691,62 +775,72 @@ class RichCLIInterface:
     
     def interactive_folder_selection(self) -> str:
         """Interactive folder selection with suggestions and .env defaults."""
+        self.logger.info("Starting interactive folder selection")
         console.print("\n[cyan]Select Codebase Folder[/cyan]")
         console.print("[dim]Enter the path to your codebase directory[/dim]")
-        
+
         # Check if there's a default folder from previous runs or .env
         default_folder = "."
         last_used_folder = os.getenv("LAST_USED_FOLDER")
         if last_used_folder and os.path.exists(last_used_folder):
             default_folder = last_used_folder
+            self.logger.info(f"Using last used folder from .env: {last_used_folder}")
             console.print(f"[green]Current setting:[/green] {last_used_folder}")
-        
+
         # Suggest common directories
         current_dir = os.getcwd()
         suggestions = []
-        
+
         # Check for common project directories
         common_dirs = ['src', 'lib', 'app', 'backend', 'frontend', 'api']
         for dir_name in common_dirs:
             if os.path.exists(os.path.join(current_dir, dir_name)):
                 suggestions.append(f"./{dir_name}")
-        
+
         # Always suggest current directory and default folder
         suggestions.insert(0, ".")
         if default_folder != "." and default_folder not in suggestions:
             suggestions.insert(0, default_folder)
-        
+
+        self.logger.debug(f"Generated {len(suggestions)} folder suggestions")
+
         if suggestions:
             console.print("\n[yellow]Suggestions:[/yellow]")
             for i, suggestion in enumerate(suggestions[:5], 1):
                 console.print(f"  {i}. {suggestion}")
-        
+
         while True:
             folder = Prompt.ask(
-                "\n[bold]Folder path[/bold]", 
+                "\n[bold]Folder path[/bold]",
                 default=default_folder,
                 show_default=True
             )
-            
+
             # Handle numeric selection
             if folder.isdigit() and 1 <= int(folder) <= len(suggestions):
                 folder = suggestions[int(folder) - 1]
-            
+                self.logger.debug(f"User selected suggestion #{folder} -> {folder}")
+
             # Validate folder
             if os.path.exists(folder) and os.path.isdir(folder):
-                return os.path.abspath(folder)
+                abs_path = os.path.abspath(folder)
+                self.logger.info(f"Folder selection successful: {abs_path}")
+                return abs_path
             else:
+                self.logger.warning(f"Invalid folder path provided: {folder}")
                 console.print(f"[red]Directory '{folder}' does not exist. Please try again.[/red]")
     
     def interactive_question_selection(self) -> str:
         """Interactive question selection with common templates and .env defaults."""
+        self.logger.info("Starting interactive question selection")
         console.print("\n[cyan]What would you like to ask about your codebase?[/cyan]")
-        
+
         # Check for last used question from .env
         last_question = os.getenv("LAST_USED_QUESTION")
         if last_question and len(last_question.strip()) > 10:
+            self.logger.info(f"Found last used question in .env: {last_question[:50]}...")
             console.print(f"[green]Last question:[/green] {last_question[:80]}{'...' if len(last_question) > 80 else ''}")
-        
+
         # Common question templates
         templates = [
             "What is the main purpose and functionality of this codebase?",
@@ -759,45 +853,57 @@ class RichCLIInterface:
             "Analyze the testing coverage and suggest test improvements",
             "Custom question (I'll type my own)"
         ]
-        
+
         # Add last question to templates if it exists and isn't already there
         if last_question and last_question not in templates:
             templates.insert(0, f"Use last question: {last_question[:50]}{'...' if len(last_question) > 50 else ''}")
-        
+
+        self.logger.debug(f"Prepared {len(templates)} question templates for selection")
+
         console.print("\n[yellow]Quick Templates:[/yellow]")
         for i, template in enumerate(templates, 1):
             if i <= 9:  # Show first 9 templates (including last question if present)
                 console.print(f"  {i}. {template}")
-        
+
         while True:
             prompt_text = f"\n[bold]Select a template (1-{min(9, len(templates))}) or type your question[/bold]"
             if last_question:
                 prompt_text += f"\n[dim]Press Enter to use: {last_question[:60]}{'...' if len(last_question) > 60 else ''}[/dim]"
-            
+
             choice = Prompt.ask(prompt_text, default="" if not last_question else None)
-            
+
             # If user pressed Enter and we have a last question, use it
             if not choice and last_question:
+                self.logger.info("User selected last question from .env")
                 return last_question
-            
+
             # Handle numeric selection
-            if choice.isdigit() and 1 <= int(choice) <= len(templates):
+            if choice and choice.isdigit() and 1 <= int(choice) <= len(templates):
                 selected_template = templates[int(choice) - 1]
+                self.logger.debug(f"User selected template #{choice}: {selected_template[:50]}...")
+
                 if selected_template.startswith("Custom"):
-                    return Prompt.ask("\n[bold]Enter your custom question[/bold]")
+                    custom_question = Prompt.ask("\n[bold]Enter your custom question[/bold]")
+                    self.logger.info(f"User entered custom question: {custom_question[:50]}...")
+                    return custom_question
                 elif selected_template.startswith("Use last question:"):
+                    self.logger.info("User selected to reuse last question")
                     return last_question
                 else:
                     # Allow user to modify the template
-                    return Prompt.ask(
+                    final_question = Prompt.ask(
                         "\n[bold]Question[/bold] (edit if needed)",
                         default=selected_template
                     )
+                    self.logger.info(f"User finalized question: {final_question[:50]}...")
+                    return final_question
             else:
                 # User typed a custom question
-                if len(choice.strip()) > 10:  # Reasonable question length
+                if choice and len(choice.strip()) > 10:  # Reasonable question length
+                    self.logger.info(f"User typed custom question: {choice.strip()[:50]}...")
                     return choice.strip()
                 else:
+                    self.logger.warning("User provided insufficient question input")
                     console.print("[red]Please enter a more detailed question or select a template.[/red]")
     
     def interactive_provider_selection(self, available_providers: List[str]) -> Optional[str]:

@@ -2,6 +2,61 @@
 
 This guide covers testing all components of the Code Chat AI application, including AI providers, file scanning, CLI interfaces, and integration testing.
 
+## Testing Overview
+
+```mermaid
+graph TD
+    A[Testing Strategy] --> B[Unit Tests]
+    A --> C[Integration Tests]
+    A --> D[End-to-End Tests]
+    A --> E[Manual Testing]
+
+    B --> F[AI Providers<br/>BaseAIProvider tests]
+    B --> G[File Scanners<br/>CodebaseScanner tests]
+    B --> H[Utilities<br/>Security, Logging, etc.]
+
+    C --> I[CLI Integration<br/>minicli.py --cli]
+    C --> J[Rich CLI Integration<br/>codechat-rich.py]
+    C --> K[API Server Integration<br/>fastapi_server.py]
+
+    D --> L[Full Application<br/>GUI Mode]
+    D --> M[Configuration Validation<br/>codechat-rich.py config]
+
+    E --> N[Provider Switching]
+    E --> O[Model Testing]
+    E --> P[File Scanner Testing]
+
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style C fill:#fff3e0
+    style D fill:#e8f5e8
+    style E fill:#ffebee
+```
+
+## Testing Workflow
+
+```mermaid
+flowchart TD
+    A[Start Testing] --> B[Environment Setup]
+    B --> C[Configuration Validation<br/>codechat-rich.py config --validate]
+    C --> D{Config Valid?}
+    D -->|No| E[Fix Configuration]
+    E --> C
+    D -->|Yes| F[Unit Tests<br/>pytest tests/]
+    F --> G[Integration Tests<br/>pytest tests/test_integration.py]
+    G --> H[End-to-End Tests<br/>Manual GUI testing]
+    H --> I[Provider Tests<br/>Test OpenRouter & Tachyon]
+    I --> J[CLI Tests<br/>Test all CLI modes]
+    J --> K[Performance Tests<br/>Large codebase scanning]
+    K --> L[All Tests Pass?]
+    L -->|No| M[Debug & Fix Issues]
+    M --> F
+    L -->|Yes| N[Testing Complete]
+
+    style A fill:#e1f5fe
+    style N fill:#c8e6c9
+```
+
 ## Quick Configuration Test
 
 1. **Run the configuration validation:**

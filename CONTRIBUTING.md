@@ -11,6 +11,36 @@ Thank you for your interest in contributing to Code Chat AI! We welcome contribu
 5. **Test your changes** thoroughly
 6. **Submit a pull request**
 
+## Contribution Workflow
+
+```mermaid
+flowchart TD
+    A[Identify Issue/Feature] --> B{Fork Repository}
+    B --> C[Clone Fork Locally]
+    C --> D[Create Feature Branch<br/>git checkout -b feature/name]
+    D --> E[Set Up Development Environment]
+    E --> F[Make Code Changes]
+    F --> G[Follow Code Style Guidelines]
+    G --> H[Write/Update Tests]
+    H --> I[Run Test Suite<br/>python -m pytest tests/]
+    I --> J{Tests Pass?}
+    J -->|No| K[Fix Issues]
+    K --> I
+    J -->|Yes| L[Update Documentation]
+    L --> M[Commit Changes<br/>git commit -m "Add: feature description"]
+    M --> N[Push to Fork<br/>git push origin feature/name]
+    N --> O[Create Pull Request]
+    O --> P[PR Review Process]
+    P --> Q{Approved?}
+    Q -->|No| R[Address Review Comments]
+    R --> F
+    Q -->|Yes| S[Merge to Main]
+    S --> T[Contribution Complete]
+
+    style A fill:#e1f5fe
+    style T fill:#c8e6c9
+```
+
 ## 📋 Development Setup
 
 ### Prerequisites

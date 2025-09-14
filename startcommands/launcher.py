@@ -303,10 +303,15 @@ class CommandLauncher:
                     env=os.environ.copy()
                 )
 
-                # For GUI applications, don't wait
-                if command.category == "GUI Applications":
-                    self.console.print("[green]✅ GUI application launched in background[/green]")
-                    self.console.print("[yellow]💡 GUI window should appear shortly. You can continue using the launcher.[/yellow]")
+                # For GUI applications and interactive CLI applications, don't wait
+                if command.category == "GUI Applications" or command.interactive:
+                    if command.interactive:
+                        self.console.print("[green]✅ Interactive CLI launched successfully[/green]")
+                        self.console.print("[yellow]💡 You can now interact with the CLI. The launcher will continue in background.[/yellow]")
+                        self.console.print("[dim]Press Ctrl+C in the CLI window to exit when done.[/dim]")
+                    else:
+                        self.console.print("[green]✅ GUI application launched in background[/green]")
+                        self.console.print("[yellow]💡 GUI window should appear shortly. You can continue using the launcher.[/yellow]")
                     return True
                 else:
                     # For other applications, wait for completion
@@ -422,10 +427,16 @@ class CommandLauncher:
                                     self.console.print("[dim]You can continue using the launcher or exit when done.[/dim]")
                                     self.console.print()
                                     continue
-                                # For CLI apps, exit after completion
+                                # For CLI apps, exit after completion (unless interactive)
                                 elif selected_command.category == "CLI Applications":
-                                    self.console.print("[green]✅ CLI application completed[/green]")
-                                    break
+                                    if selected_command.interactive:
+                                        self.console.print("[green]✅ Interactive CLI launched successfully[/green]")
+                                        self.console.print("[dim]You can continue using the launcher or exit when done.[/dim]")
+                                        self.console.print()
+                                        continue
+                                    else:
+                                        self.console.print("[green]✅ CLI application completed[/green]")
+                                        break
                                 # For GUI apps, continue (they run in background)
                                 # Don't break - let user continue using launcher
 
@@ -442,8 +453,14 @@ class CommandLauncher:
                                 self.console.print()
                                 continue
                             elif selected_command.category == "CLI Applications":
-                                self.console.print("[green]✅ CLI application completed[/green]")
-                                break
+                                if selected_command.interactive:
+                                    self.console.print("[green]✅ Interactive CLI launched successfully[/green]")
+                                    self.console.print("[dim]You can continue using the launcher or exit when done.[/dim]")
+                                    self.console.print()
+                                    continue
+                                else:
+                                    self.console.print("[green]✅ CLI application completed[/green]")
+                                    break
 
                 elif choice == "3":
                     # Show help

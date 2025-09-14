@@ -2,6 +2,42 @@
 
 ## 🎯 Quick Launch Options
 
+## Startup Flow
+
+```mermaid
+flowchart TD
+    A[User wants to start Code Chat AI] --> B{Platform?}
+    B -->|Windows| C[Double-click start.bat]
+    B -->|Any OS| D[Run python -m startcommands]
+
+    C --> E[Batch file checks environment]
+    D --> E
+
+    E --> F{Environment OK?}
+    F -->|No| G[Show error message]
+    F -->|Yes| H[Activate virtual environment]
+
+    H --> I[Launch interactive launcher]
+    I --> J[Show main menu]
+    J --> K{User Choice?}
+
+    K -->|GUI App| L[Launch Main GUI]
+    K -->|Web App| M[Launch Web Application]
+    K -->|CLI| N[Launch CLI Mode]
+    K -->|Server| O[Launch API Server]
+
+    L --> P[Application running]
+    M --> P
+    N --> P
+    O --> P
+
+    G --> Q[User fixes issue]
+    Q --> E
+
+    style A fill:#e1f5fe
+    style P fill:#c8e6c9
+```
+
 ### Option 1: Double-Click Batch File (Easiest)
 Simply **double-click the `start.bat` file** in the project root directory!
 

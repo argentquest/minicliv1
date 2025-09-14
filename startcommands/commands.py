@@ -30,6 +30,7 @@ class StartupCommand:
     requires_env: bool = False
     icon: str = "🚀"
     priority: int = 0  # Higher priority = shown first in category
+    interactive: bool = False  # Whether this is an interactive CLI that shouldn't wait for completion
 
     def get_full_command(self) -> List[str]:
         """Get the full command as a list for subprocess execution."""
@@ -152,9 +153,10 @@ class CommandRegistry:
             description="Beautiful CLI with progress bars, colors, and interactive prompts",
             category="CLI Applications",
             command="minicli.py",
-            args=["--rich-cli"],
+            args=["--rich-cli", "interactive"],
             icon="🎨",
-            priority=9
+            priority=9,
+            interactive=True
         ))
 
         # Server Components
