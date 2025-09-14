@@ -58,6 +58,7 @@
   # IDE
   .vscode/
   .idea/
+  .roo/
   *.swp
   *.swo
   *~
