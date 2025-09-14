@@ -351,7 +351,7 @@ def test_with_real_server():
             assert "response" in analysis_data
             assert "model" in analysis_data
             assert "processing_time" in analysis_data
-            print(".2f")
+            print(f"   ✅ Analysis completed in {analysis_data['processing_time']:.2f}s")
         elif response.status_code == 503:
             print("   ⚠️  Analysis endpoint returned 503 - AI processor not initialized (no API key)")
         else:

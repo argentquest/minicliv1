@@ -46,10 +46,13 @@ class TestEndToEndWorkflows:
         assert "=== File:" in codebase_content  # File separators
         
         # Step 4: Process with AI
-        with patch('ai.system_message_manager') as mock_manager:
+        with patch('system_message_manager.system_message_manager') as mock_manager:
             mock_manager.get_system_message.return_value = "You are a helpful assistant."
-            
-            processor = AIProcessor("test-key", "openrouter")
+
+            from ai import AIProviderFactory
+            factory = AIProviderFactory()
+            provider = factory.create_provider("openrouter", "test-key")
+            processor = AIProcessor(provider)
             
             result = processor.process_question(
                 question="Explain what this code does",
@@ -117,7 +120,16 @@ TOOL_TEST=pytest -v --tb=short
         env_file.write_text(env_content)
         
         # Step 2: Load environment variables
-        with patch('env_manager.load_dotenv') as mock_load_dotenv:
+        with patch('env_manager.env_manager.load_env_file') as mock_load_env:
+            mock_load_env.return_value = {
+                'API_KEY': 'sk-test123456',
+                'DEFAULT_MODEL': 'openai/gpt-4',
+                'UI_THEME': 'dark',
+                'MODELS': 'openai/gpt-3.5-turbo,openai/gpt-4,anthropic/claude-3-sonnet',
+                'IGNORE_FOLDERS': 'venv,node_modules,__pycache__',
+                'TOOL_LINT': 'pylint --disable=all --enable=unused-import',
+            }
+
             with patch('os.getenv') as mock_getenv:
                 # Mock environment variable access
                 env_vars = {
@@ -128,16 +140,19 @@ TOOL_TEST=pytest -v --tb=short
                     'IGNORE_FOLDERS': 'venv,node_modules,__pycache__',
                     'TOOL_LINT': 'pylint --disable=all --enable=unused-import',
                 }
-                
+
                 def mock_getenv_func(key, default=""):
                     return env_vars.get(key, default)
-                
+
                 mock_getenv.side_effect = mock_getenv_func
-                
+
                 # Step 3: Initialize components with environment config
                 scanner = CodebaseScanner()
-                processor = AIProcessor(env_vars['API_KEY'], "openrouter")
-                
+                from ai import AIProviderFactory
+                factory = AIProviderFactory()
+                provider = factory.create_provider("openrouter", env_vars['API_KEY'])
+                processor = AIProcessor(provider)
+
                 # Verify configuration was applied
                 assert processor.api_key == 'sk-test123456'
                 assert 'venv' in scanner.ignore_folders
@@ -166,10 +181,13 @@ TOOL_TEST=pytest -v --tb=short
         response_iter = iter(mock_response_generator())
         mock_requests_post.side_effect = lambda *args, **kwargs: next(response_iter)
         
-        with patch('ai.system_message_manager') as mock_manager:
+        with patch('system_message_manager.system_message_manager') as mock_manager:
             mock_manager.get_system_message.return_value = "You are a helpful assistant."
-            
-            processor = AIProcessor("test-key", "openrouter")
+
+            from ai import AIProviderFactory
+            factory = AIProviderFactory()
+            provider = factory.create_provider("openrouter", "test-key")
+            processor = AIProcessor(provider)
             app_state = AppState()
             
             # First turn - with codebase context
@@ -203,19 +221,26 @@ TOOL_TEST=pytest -v --tb=short
                 codebase_content="",
                 model="gpt-3.5-turbo"
             )
-            
+
+            # Add third turn to history
+            app_state.conversation_history.append(ConversationMessage(role="user", content="Can you show an example?"))
+            app_state.conversation_history.append(ConversationMessage(role="assistant", content=result3))
+
             # Verify all turns worked
             assert result1 == "Python is a high-level programming language."
             assert result2 == "You can create a function using the 'def' keyword."
             assert result3 == "Here's an example: def my_function(): pass"
-            
+
             # Verify conversation history grew correctly
             assert len(app_state.conversation_history) == 6  # 3 user + 3 assistant messages
     
     @pytest.mark.integration
     def test_provider_switching_workflow(self, mock_requests_post):
         """Test switching between AI providers."""
-        processor = AIProcessor("test-key", "openrouter")
+        from ai import AIProviderFactory
+        factory = AIProviderFactory()
+        provider = factory.create_provider("openrouter", "test-key")
+        processor = AIProcessor(provider)
         
         # Verify initial provider
         assert processor.provider == "openrouter"
@@ -234,16 +259,16 @@ TOOL_TEST=pytest -v --tb=short
         assert info["name"] == "tachyon"
         
         # Test processing with new provider
-        with patch('ai.system_message_manager') as mock_manager:
+        with patch('system_message_manager.system_message_manager') as mock_manager:
             mock_manager.get_system_message.return_value = "System message"
-            
+
             result = processor.process_question(
                 question="Test question",
                 conversation_history=[],
                 codebase_content="test code",
                 model="test-model"
             )
-            
+
             assert result == "Mocked AI response content"
     
     @pytest.mark.integration  
@@ -256,20 +281,23 @@ TOOL_TEST=pytest -v --tb=short
         assert "does not exist" in error_msg
         
         # Test 2: Missing API key handling
-        processor = AIProcessor("", "openrouter")
-        
+        from ai import AIProviderFactory
+        factory = AIProviderFactory()
+        provider = factory.create_provider("openrouter", "")
+        processor = AIProcessor(provider)
+
         with pytest.raises(Exception) as exc_info:
             processor.process_question(
                 question="Test question",
                 conversation_history=[],
-                codebase_content="test code", 
+                codebase_content="test code",
                 model="gpt-3.5-turbo"
             )
         assert "API key is not configured" in str(exc_info.value)
-        
+
         # Test 3: Invalid provider handling
         with pytest.raises(ValueError) as exc_info:
-            AIProcessor("test-key", "invalid_provider")
+            factory.create_provider("invalid_provider", "test-key")
         assert "Unsupported provider" in str(exc_info.value)
         
         # Test 4: File reading error recovery

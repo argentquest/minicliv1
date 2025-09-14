@@ -8,6 +8,8 @@ and detailed descriptions.
 
 import sys
 import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from logger import get_logger
 from typing import List, Optional
 from rich.console import Console
 from rich.table import Table
@@ -22,6 +24,9 @@ from rich.status import Status
 import subprocess
 
 from .commands import command_registry, StartupCommand
+
+# Initialize logger for launcher module
+logger = get_logger(__name__)
 
 
 class CommandLauncher:
@@ -190,14 +195,12 @@ class CommandLauncher:
                     command.get_full_command(),
                     cwd=os.getcwd(),
                     env=os.environ.copy(),
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
                     creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
                 )
 
-                # Give server a moment to start
+                # Give server more time to start (increased from 2 to 5 seconds)
                 import time
-                time.sleep(2)
+                time.sleep(5)
 
                 # Check if process is still running
                 if process.poll() is None:
@@ -208,11 +211,9 @@ class CommandLauncher:
                     return True
                 else:
                     # Process terminated early - check for errors
-                    stdout, stderr = process.communicate()
-                    if stderr:
-                        self.console.print(f"[red]❌ Server failed to start: {stderr.decode().strip()}[/red]")
-                    else:
-                        self.console.print("[red]❌ Server process terminated unexpectedly[/red]")
+                    return_code = process.returncode
+                    self.console.print(f"[red]❌ Server failed to start (exit code: {return_code})[/red]")
+                    self.console.print("[yellow]💡 Try running the server directly to see error messages[/yellow]")
                     return False
 
         except FileNotFoundError:
@@ -251,9 +252,9 @@ class CommandLauncher:
                     creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
                 )
 
-                # Give web app a moment to start
+                # Give web app more time to start (increased from 3 to 5 seconds)
                 import time
-                time.sleep(3)
+                time.sleep(5)
 
                 # Check if process is still running
                 if process.poll() is None:
@@ -267,10 +268,16 @@ class CommandLauncher:
                     elif "api_port" in os.environ:
                         port = os.environ.get("API_PORT", "8000")
                         self.console.print(f"[blue]🔗 API should be available at: http://localhost:{port}[/blue]")
+                    else:
+                        # Default FastAPI port
+                        self.console.print(f"[blue]🔗 API should be available at: http://localhost:8000[/blue]")
 
                     return True
                 else:
-                    self.console.print("[red]❌ Web application failed to start[/red]")
+                    # Process terminated early
+                    return_code = process.returncode
+                    self.console.print(f"[red]❌ Web application failed to start (exit code: {return_code})[/red]")
+                    self.console.print("[yellow]💡 Try running the application directly to see error messages[/yellow]")
                     return False
 
         except FileNotFoundError:

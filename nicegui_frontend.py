@@ -31,7 +31,7 @@ import httpx
 import requests
 
 # Configuration
-FASTAPI_URL = os.getenv("FASTAPI_URL", "http://localhost:8000")
+FASTAPI_URL = os.getenv("FASTAPI_URL", "http://localhost:8001")
 WEB_PORT = int(os.getenv("WEB_PORT", "8080"))
 
 class CodeChatWebApp:
@@ -153,20 +153,12 @@ class CodeChatWebApp:
 
             # Main tabs
             with ui.tabs().classes('w-full') as tabs:
-                basic_tab = ui.tab('📝 Basic Settings')
-                ai_tab = ui.tab('🤖 AI Settings')
-                files_tab = ui.tab('📁 File Filters')
+                main_tab = ui.tab('⚙️ Configuration')
                 output_tab = ui.tab('📤 Output')
 
-            with ui.tab_panels(tabs, value=basic_tab).classes('w-full'):
-                with ui.tab_panel(basic_tab).classes('tab-content'):
-                    self.setup_basic_tab()
-
-                with ui.tab_panel(ai_tab).classes('tab-content'):
-                    self.setup_ai_tab()
-
-                with ui.tab_panel(files_tab).classes('tab-content'):
-                    self.setup_files_tab()
+            with ui.tab_panels(tabs, value=main_tab).classes('w-full'):
+                with ui.tab_panel(main_tab).classes('tab-content'):
+                    self.setup_main_tab()
 
                 with ui.tab_panel(output_tab).classes('tab-content'):
                     self.setup_output_tab()
@@ -177,73 +169,95 @@ class CodeChatWebApp:
                                               on_click=self.analyze_code).classes('bg-primary text-white px-6 py-2')
                 ui.button('🔄 Reset Form', on_click=self.reset_form).classes('px-6 py-2')
 
-    def setup_basic_tab(self):
-        """Set up the basic settings tab."""
+    def setup_main_tab(self):
+        """Set up the main configuration tab combining basic, AI, and file settings."""
         with ui.card().classes('w-full'):
-            ui.label('Basic Configuration').classes('text-lg font-semibold mb-4')
+            ui.label('📋 Complete Configuration').classes('text-xl font-bold mb-6')
+
+            # Basic Configuration Section
+            ui.label('📁 Codebase & Question').classes('text-lg font-semibold mb-3 text-blue-600')
+            ui.label('Configure the basic settings for your code analysis.').classes('text-sm text-gray-600 mb-4')
 
             # Codebase folder
             with ui.row().classes('form-group items-center gap-4'):
-                self.folder_input = ui.input(
-                    label='Codebase Folder',
-                    placeholder='Select the folder containing your code...',
-                    value=self.form_data['folder']
-                ).classes('flex-1').on_value_change(lambda e: self.update_form_data('folder', e.value))
+                with ui.column().classes('flex-1'):
+                    self.folder_input = ui.input(
+                        label='📂 Codebase Folder Path',
+                        placeholder='e.g., /path/to/your/project or C:\\path\\to\\project',
+                        value=self.form_data['folder']
+                    ).classes('w-full').on_value_change(lambda e: self.update_form_data('folder', e.value))
+                    ui.label('💡 The root directory of your codebase to analyze').classes('text-xs text-gray-500 mt-1')
+                    ui.label('📝 Enter the full path manually (browsers cannot access local paths for security)').classes('text-xs text-blue-600 mt-1')
 
-                ui.button('📂 Browse', on_click=self.browse_folder).classes('px-4 py-2')
+                ui.button('📂 Browse', on_click=self.browse_folder).classes('px-4 py-2 h-10')
+                ui.button('ℹ️ Help', on_click=self.show_path_help).classes('px-4 py-2 h-10')
 
             # Analysis question
-            self.question_input = ui.textarea(
-                label='Analysis Question',
-                placeholder='Ask a specific question about your codebase...',
-                value=self.form_data['question']
-            ).classes('w-full').on_value_change(lambda e: self.update_form_data('question', e.value))
+            with ui.column().classes('mt-4'):
+                self.question_input = ui.textarea(
+                    label='❓ Analysis Question',
+                    placeholder='e.g., "Explain the main architecture" or "Find security vulnerabilities"',
+                    value=self.form_data['question']
+                ).classes('w-full').on_value_change(lambda e: self.update_form_data('question', e.value))
+                ui.label('💡 Ask specific questions about your codebase. Be detailed for better results.').classes('text-xs text-gray-500 mt-1')
 
-    def setup_ai_tab(self):
-        """Set up the AI settings tab."""
-        with ui.card().classes('w-full'):
-            ui.label('AI Configuration').classes('text-lg font-semibold mb-4')
+            ui.separator().classes('my-6')
+
+            # AI Configuration Section
+            ui.label('🤖 AI Model & Provider').classes('text-lg font-semibold mb-3 text-green-600')
+            ui.label('Choose the AI model and provider for your analysis.').classes('text-sm text-gray-600 mb-4')
 
             # Provider selection
-            ui.select(
-                label='AI Provider',
-                options=self.providers,
-                value=self.form_data['provider']
-            ).classes('w-full mb-4').on_value_change(lambda e: self.update_form_data('provider', e.value))
+            with ui.column().classes('mb-4'):
+                ui.select(
+                    label='🔌 AI Provider',
+                    options=self.providers,
+                    value=self.form_data['provider']
+                ).classes('w-full').on_value_change(lambda e: self.update_form_data('provider', e.value))
+                ui.label('💡 The AI service provider (OpenRouter, Tachyon, etc.)').classes('text-xs text-gray-500 mt-1')
 
             # Model selection
-            ui.select(
-                label='AI Model',
-                options=self.models,
-                value=self.form_data['model']
-            ).classes('w-full mb-4').on_value_change(lambda e: self.update_form_data('model', e.value))
+            with ui.column().classes('mb-4'):
+                ui.select(
+                    label='🧠 AI Model',
+                    options=self.models,
+                    value=self.form_data['model']
+                ).classes('w-full').on_value_change(lambda e: self.update_form_data('model', e.value))
+                ui.label('💡 The specific AI model to use for analysis (affects quality and speed)').classes('text-xs text-gray-500 mt-1')
 
             # API Key (optional)
-            ui.input(
-                label='API Key (optional)',
-                placeholder='Uses environment variable if not provided',
-                value=self.form_data['api_key'],
-                password=True
-            ).classes('w-full').on_value_change(lambda e: self.update_form_data('api_key', e.value))
+            with ui.column().classes('mb-4'):
+                ui.input(
+                    label='🔑 API Key (Optional)',
+                    placeholder='Leave empty to use environment variable',
+                    value=self.form_data['api_key'],
+                    password=True
+                ).classes('w-full').on_value_change(lambda e: self.update_form_data('api_key', e.value))
+                ui.label('💡 API key for the selected provider. If empty, uses environment variables.').classes('text-xs text-gray-500 mt-1')
 
-    def setup_files_tab(self):
-        """Set up the file filters tab."""
-        with ui.card().classes('w-full'):
-            ui.label('File Filtering').classes('text-lg font-semibold mb-4')
+            ui.separator().classes('my-6')
+
+            # File Filtering Section
+            ui.label('🎯 File Filtering').classes('text-lg font-semibold mb-3 text-purple-600')
+            ui.label('Control which files are included or excluded from analysis.').classes('text-sm text-gray-600 mb-4')
 
             # Include patterns
-            ui.textarea(
-                label='Include Patterns',
-                placeholder='File patterns to analyze (comma-separated)',
-                value=self.form_data['include']
-            ).classes('w-full mb-4').on_value_change(lambda e: self.update_form_data('include', e.value))
+            with ui.column().classes('mb-4'):
+                ui.textarea(
+                    label='✅ Include Patterns',
+                    placeholder='*.py,*.js,*.ts,*.java,*.cpp,*.c,*.h',
+                    value=self.form_data['include']
+                ).classes('w-full').on_value_change(lambda e: self.update_form_data('include', e.value))
+                ui.label('💡 File extensions to analyze (comma-separated). Use * for wildcards.').classes('text-xs text-gray-500 mt-1')
 
             # Exclude patterns
-            ui.textarea(
-                label='Exclude Patterns',
-                placeholder='File patterns to skip (comma-separated)',
-                value=self.form_data['exclude']
-            ).classes('w-full').on_value_change(lambda e: self.update_form_data('exclude', e.value))
+            with ui.column():
+                ui.textarea(
+                    label='❌ Exclude Patterns',
+                    placeholder='test_*,__pycache__,*.pyc,node_modules,venv,.venv',
+                    value=self.form_data['exclude']
+                ).classes('w-full').on_value_change(lambda e: self.update_form_data('exclude', e.value))
+                ui.label('💡 Files/directories to skip (comma-separated). Common: tests, cache, dependencies.').classes('text-xs text-gray-500 mt-1')
 
     def setup_output_tab(self):
         """Set up the output settings tab."""
@@ -275,10 +289,72 @@ class CodeChatWebApp:
         self.form_data[key] = value
 
     def browse_folder(self):
-        """Open folder browser dialog."""
-        # This would typically open a file dialog
-        # For now, just show a notification
-        ui.notify("Folder browser not implemented in web version", type="info")
+        """Open folder browser dialog using JavaScript."""
+        # Use JavaScript to open a directory picker
+        js_code = """
+        async function selectFolder() {
+            try {
+                // Check if the File System Access API is supported
+                if ('showDirectoryPicker' in window) {
+                    const dirHandle = await window.showDirectoryPicker();
+                    const path = dirHandle.name; // This gives us the folder name, not full path
+
+                    // For security reasons, browsers don't expose full paths
+                    // We'll show a helpful message instead
+                    alert('Folder selected: ' + path + '\\n\\nNote: For security reasons, web browsers cannot access the full file path. Please manually enter the complete path in the input field above.');
+
+                    // Try to get the folder contents to show user what was selected
+                    let fileCount = 0;
+                    for await (const [name, handle] of dirHandle.entries()) {
+                        fileCount++;
+                        if (fileCount > 10) break; // Limit to avoid too many iterations
+                    }
+
+                    alert('Selected folder contains approximately ' + fileCount + ' items.\\nPlease enter the full path manually in the input field.');
+                } else {
+                    // Fallback for browsers that don't support the File System Access API
+                    alert('Your browser does not support the File System Access API.\\n\\nPlease manually enter the complete folder path in the input field above.\\n\\nExample:\\n- Windows: C:\\\\Users\\\\YourName\\\\Documents\\\\project\\n- Linux/Mac: /home/username/projects/myproject');
+                }
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    alert('Error selecting folder: ' + error.message + '\\n\\nPlease manually enter the folder path in the input field above.');
+                }
+            }
+        }
+        selectFolder();
+        """
+        ui.run_javascript(js_code)
+
+    def show_path_help(self):
+        """Show help for entering file paths."""
+        help_text = """
+        📂 How to Enter File Paths:
+
+        For security reasons, web browsers cannot directly access your local file system.
+        Please manually enter the complete path to your project folder:
+
+        🪟 Windows Examples:
+        • C:\\Users\\YourName\\Documents\\myproject
+        • C:\\Projects\\codebase
+        • D:\\workspace\\app
+
+        🐧 Linux/Mac Examples:
+        • /home/username/projects/myapp
+        • /Users/username/Documents/code
+        • /workspace/project
+
+        💡 Tips:
+        • Use forward slashes (/) on all systems (they work on Windows too)
+        • Make sure the folder exists and is accessible
+        • The path should point to the root directory of your codebase
+
+        🔍 You can also:
+        • Copy the path from your file explorer
+        • Use relative paths if running the server locally
+        • Use the Browse button to see folder contents (limited browser support)
+        """
+
+        ui.notify(help_text, type="info", duration=10000)
 
     async def analyze_code(self):
         """Analyze the codebase using the backend API."""

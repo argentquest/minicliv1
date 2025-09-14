@@ -6,9 +6,15 @@ startup command selector.
 """
 
 import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from logger import get_logger
 import argparse
 from .launcher import CommandLauncher
 from .commands import command_registry
+
+# Initialize logger for main module
+logger = get_logger(__name__)
 
 
 def create_parser() -> argparse.ArgumentParser:

@@ -168,7 +168,7 @@ Examples:
 
             # Validate API key
             if not self.ai_processor.validate_api_key():
-                self.log("ERROR: No valid API key configured. Please set API_KEY in .env file or use --api-key option.", force=True)
+                self.log("ERROR: No API key configured. Please set API_KEY in .env file or use --api-key option.", force=True)
                 return False
 
             self.log(f"SUCCESS: AI processor initialized with {config['provider']} provider")
@@ -289,7 +289,7 @@ Examples:
             result = {
                 'response': response,
                 'model': model,
-                'provider': str(self.ai_processor.provider.__class__.__name__),
+                'provider': self.ai_processor.provider,
                 'processing_time': processing_time,
                 'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
             }

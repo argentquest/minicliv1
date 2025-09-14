@@ -5,6 +5,7 @@ import pytest
 import json
 import time
 import threading
+import os
 from pathlib import Path
 from unittest.mock import patch, Mock
 
@@ -229,7 +230,7 @@ class TestCleanupStaleLocks:
         
         # Manually set old timestamp
         old_time = time.time() - 7200  # 2 hours ago
-        old_lock.touch(times=(old_time, old_time))
+        os.utime(old_lock, (old_time, old_time))
         
         # Create recent lock file
         recent_lock = Path(temp_dir) / "recent.json.lock"

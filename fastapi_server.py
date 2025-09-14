@@ -18,7 +18,8 @@ Endpoints:
 - GET /models - List available AI models
 - GET /providers - List available AI providers
 - GET /system-prompts - List available system prompts
-- POST /analyze - Perform code analysis
+- POST /analyze - Perform code analysis (JSON body)
+- GET /analyze-explicit - Perform code analysis (explicit query parameters)
 
 Usage:
     python fastapi_server.py
@@ -122,7 +123,7 @@ def initialize_components():
         # Get API key from environment
         env_vars = env_manager.load_env_file()
         api_key = env_vars.get("API_KEY", "")
-        provider = env_vars.get("DEFAULT_PROVIDER", "openrouter")
+        provider = env_vars.get("PROVIDER", "openrouter")
 
         if not api_key:
             logger.warning("No API_KEY found in environment variables")
@@ -296,6 +297,124 @@ async def analyze_code(request: AnalysisRequest):
         raise
     except Exception as e:
         logger.error(f"Error during analysis: {e}")
+        processing_time = (datetime.now() - start_time).total_seconds()
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+
+@app.get("/analyze-explicit", response_model=AnalysisResponse)
+async def analyze_code_explicit(
+    folder: str = Query(..., description="Path to the codebase folder to analyze"),
+    question: str = Query(..., description="Question about the codebase"),
+    model: str = Query("gpt-3.5-turbo", description="AI model to use for analysis"),
+    provider: str = Query("openrouter", description="AI provider to use"),
+    include: Optional[str] = Query("*.py,*.js,*.ts,*.java,*.cpp,*.c,*.h", description="File patterns to include (comma-separated)"),
+    exclude: Optional[str] = Query("test_*,__pycache__,*.pyc,node_modules,venv,.venv", description="File patterns to exclude (comma-separated)"),
+    output: str = Query("structured", description="Output format"),
+    api_key: Optional[str] = Query(None, description="API key (optional, uses environment if not provided)")
+):
+    """
+    Analyze codebase with AI - Explicit Parameters Version.
+
+    This endpoint accepts all parameters as individual query parameters instead of JSON,
+    making it easier to test and see all parameters explicitly in the URL.
+
+    Parameters:
+    - folder: Path to the codebase folder (REQUIRED)
+    - question: Question about the codebase (REQUIRED)
+    - model: AI model to use (default: gpt-3.5-turbo)
+    - provider: AI provider to use (default: openrouter)
+    - include: File patterns to include (default: *.py,*.js,*.ts,*.java,*.cpp,*.c,*.h)
+    - exclude: File patterns to exclude (default: test_*,__pycache__,*.pyc,node_modules,venv,.venv)
+    - output: Output format (default: structured)
+    - api_key: API key (optional, uses environment if not provided)
+
+    Example:
+    GET /analyze-explicit?folder=/path/to/project&question=Explain%20the%20architecture&model=gpt-4
+    """
+    start_time = datetime.now()
+
+    try:
+        if not ai_processor:
+            raise HTTPException(status_code=503, detail="AI processor not initialized")
+
+        # Validate directory
+        if not scanner:
+            raise HTTPException(status_code=503, detail="File scanner not initialized")
+
+        is_valid, error_msg = scanner.validate_directory(folder)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=f"Invalid directory: {error_msg}")
+
+        # Set API key if provided
+        if api_key:
+            ai_processor.set_api_key(api_key)
+
+        # Set provider if different
+        if provider != ai_processor.provider:
+            ai_processor.set_provider(provider)
+
+        # Scan directory for files
+        logger.info(f"Scanning directory: {folder}")
+        files = scanner.scan_directory(folder)
+
+        if not files:
+            raise HTTPException(status_code=400, detail="No supported files found in directory")
+
+        # Filter files based on include/exclude patterns
+        if include or exclude:
+            filtered_files = []
+            include_patterns = [p.strip() for p in include.split(',')] if include else []
+            exclude_patterns = [p.strip() for p in exclude.split(',')] if exclude else []
+
+            for file_path in files:
+                filename = os.path.basename(file_path)
+
+                # Check include patterns
+                if include_patterns:
+                    if not any(pattern in filename for pattern in include_patterns):
+                        continue
+
+                # Check exclude patterns
+                if exclude_patterns:
+                    if any(pattern in filename for pattern in exclude_patterns):
+                        continue
+
+                filtered_files.append(file_path)
+
+            files = filtered_files
+
+        logger.info(f"Processing {len(files)} files")
+
+        # Get codebase content
+        codebase_content = scanner.get_codebase_content(files)
+
+        # Process question with AI
+        logger.info(f"Processing question with model: {model}")
+        response = ai_processor.process_question(
+            question=question,
+            conversation_history=[],
+            codebase_content=codebase_content,
+            model=model
+        )
+
+        # Calculate processing time
+        processing_time = (datetime.now() - start_time).total_seconds()
+
+        logger.info(".2f")
+
+        return AnalysisResponse(
+            response=response,
+            model=model,
+            provider=provider,
+            processing_time=processing_time,
+            timestamp=datetime.now().isoformat(),
+            files_count=len(files)
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error during explicit analysis: {e}")
         processing_time = (datetime.now() - start_time).total_seconds()
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 

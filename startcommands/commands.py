@@ -5,11 +5,16 @@ This module defines all available startup commands with their descriptions,
 categories, and execution details.
 """
 
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from logger import get_logger
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional, Callable
-import os
-import sys
 import subprocess
+
+# Initialize logger for commands module
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -31,6 +36,7 @@ class StartupCommand:
         cmd = [sys.executable, self.command]
         if self.args:
             cmd.extend(self.args)
+        logger.debug(f"Generated full command for '{self.id}': {' '.join(cmd)}")
         return cmd
 
     def can_run(self) -> bool:
@@ -38,7 +44,10 @@ class StartupCommand:
         if self.requires_env:
             # Check if required environment variables are set
             required_vars = ['API_KEY', 'DEFAULT_MODEL']
-            return all(os.getenv(var) for var in required_vars)
+            env_check = all(os.getenv(var) for var in required_vars)
+            logger.debug(f"Environment check for command '{self.id}': {'PASSED' if env_check else 'FAILED'}")
+            return env_check
+        logger.debug(f"Command '{self.id}' does not require environment setup")
         return True
 
     def get_status(self) -> str:
@@ -52,9 +61,11 @@ class CommandRegistry:
     """Registry for all available startup commands."""
 
     def __init__(self):
+        logger.info("Initializing CommandRegistry")
         self.commands: Dict[str, StartupCommand] = {}
         self.categories: Dict[str, List[str]] = {}
         self._register_commands()
+        logger.info(f"CommandRegistry initialized with {len(self.commands)} commands in {len(self.categories)} categories")
 
     def _register_commands(self):
         """Register all available startup commands."""
@@ -212,10 +223,12 @@ class CommandRegistry:
 
     def _register_command(self, command: StartupCommand):
         """Register a single command."""
+        logger.debug(f"Registering command: {command.id} ({command.name})")
         self.commands[command.id] = command
 
         if command.category not in self.categories:
             self.categories[command.category] = []
+            logger.debug(f"Created new category: {command.category}")
         self.categories[command.category].append(command.id)
 
         # Sort commands within category by priority (descending)
@@ -223,10 +236,16 @@ class CommandRegistry:
             key=lambda cmd_id: self.commands[cmd_id].priority,
             reverse=True
         )
+        logger.debug(f"Command {command.id} registered successfully in category {command.category}")
 
     def get_command(self, command_id: str) -> Optional[StartupCommand]:
         """Get a command by ID."""
-        return self.commands.get(command_id)
+        command = self.commands.get(command_id)
+        if command:
+            logger.debug(f"Retrieved command: {command_id}")
+        else:
+            logger.debug(f"Command not found: {command_id}")
+        return command
 
     def get_commands_by_category(self, category: str) -> List[StartupCommand]:
         """Get all commands in a category."""
@@ -245,11 +264,14 @@ class CommandRegistry:
 
     def search_commands(self, query: str) -> List[StartupCommand]:
         """Search commands by name or description."""
+        logger.debug(f"Searching commands with query: '{query}'")
         query_lower = query.lower()
-        return [
+        results = [
             cmd for cmd in self.get_all_commands()
             if query_lower in cmd.name.lower() or query_lower in cmd.description.lower()
         ]
+        logger.debug(f"Search returned {len(results)} matching commands")
+        return results
 
 
 # Global registry instance
