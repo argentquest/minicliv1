@@ -1,46 +1,33 @@
-# AGENTS.md
+# Repository Guidelines
 
-This file provides guidance to agents when working with code in this repository.
+## Project Structure & Module Organization
+- Core CLI and UI entry points (`minicli.py`, `modern_main.py`, `start_ui.py`) sit at the repo root with helpers such as `logger.py`, `env_manager.py`, and `pattern_matcher.py`.
+- Provider implementations live in `providers/`; each subclass `BaseAIProvider` while shared contracts stay in `base_ai.py` and `ai.py`.
+- Generated outputs belong in `results/` or `logs/`; keep tracked artifacts reproducible and lightweight.
+- Tests mirror modules under `tests/`; place fixtures beside the suites that need them.
 
-## Build/Test Commands
+## Build, Test, and Development Commands
+- `venv/Scripts/python.exe -m pytest tests/ --tb=no -q` runs the full suite with concise reporting.
+- `venv/Scripts/python.exe -m pytest tests/test_specific.py::TestClass::test_method -v` targets a single failure with verbose output.
+- `python -m pytest --cov=. --cov-report=html --cov-exclude=tests/* --cov-exclude=subfolder/*` produces coverage data used in CI.
+- `python modern_main.py` starts the desktop UI; use `python start_ui.py` to force the window and `python minicli.py --cli` for headless mode.
 
-```bash
-# Run tests (single test)
-venv/Scripts/python.exe -m pytest tests/test_specific.py::TestClass::test_method -v
+## Coding Style & Naming Conventions
+- Follow PEP 8 with 4-space indentation, type hints on public APIs, and descriptive snake_case modules/functions; classes stay in PascalCase.
+- Name providers after their services (e.g., `OpenRouterProvider`) and register them through `AIProviderFactory.create_provider`.
+- Reuse `LazyCodebaseScanner` or `CodebaseScanner` instead of duplicating traversal logic, and document non-obvious behavior with brief docstrings.
 
-# Run all tests
-venv/Scripts/python.exe -m pytest tests/ --tb=no -q
+## Testing Guidelines
+- Pytest drives validation; adhere to `pytest.ini` patterns (`test_*.py`, `Test*` classes, `test_*` methods).
+- Mark long or external calls with `@pytest.mark` (`unit`, `integration`, `slow`) to keep defaults fast.
+- Review `htmlcov/index.html` before merging and close remaining gaps when coverage slips.
 
-# Run with coverage
-python -m pytest --cov=. --cov-report=html --cov-exclude=tests/* --cov-exclude=subfolder/*
+## Commit & Pull Request Guidelines
+- Keep commit messages short and imperative (history examples: “Cleanup”, “Remove IDE folders”); squash noisy WIP commits.
+- Pull requests should state intent, list impacted modules, reference issues when available, and attach UI screenshots for user-facing changes.
+- Run the CI-equivalent commands locally, call out follow-ups, and request review from maintainers of the touched areas.
 
-# Launch application
-python modern_main.py
-python start_ui.py  # Force window visibility
-python minicli.py --cli  # CLI mode
-python codechat-rich.py  # Rich CLI mode
-```
-
-## Critical Project-Specific Patterns
-
-- **Provider Pattern**: AI providers MUST extend [`BaseAIProvider`](base_ai.py:23) and implement all abstract methods
-- **Lazy Loading**: Use [`LazyCodebaseScanner`](lazy_file_scanner.py:35) for large codebases, [`CodebaseScanner`](file_scanner.py:9) for small ones
-- **File Locking**: ALWAYS use [`safe_json_save()`](file_lock.py) and [`safe_json_load()`](file_lock.py) for JSON operations
-- **Security**: Use [`SecurityUtils.mask_api_key()`](security_utils.py:27) for logging, never log raw API keys
-- **Environment**: Use [`env_manager.update_single_var()`](env_manager.py:253) to update .env files safely
-- **Pattern Matching**: [`pattern_matcher.is_tool_command()`](pattern_matcher.py:223) determines if questions need codebase context
-
-## Non-Standard Architecture
-
-- **Persistent Files**: First conversation turn files persist across subsequent turns via [`AppState.set_persistent_files()`](models.py:157)
-- **Dual Scanners**: Standard scanner for compatibility, lazy scanner for performance - both implement same interface
-- **Provider Factory**: [`AIProviderFactory.create_provider()`](ai.py:20) creates provider instances, supports registration
-- **Context Logging**: Use [`@with_context`](logger.py:305) decorator and [`logger.set_context()`](logger.py:190) for structured logging
-- **Tool Commands**: Questions matching TOOL_* env vars automatically get codebase context via pattern matching
-
-## Testing Requirements
-
-- Tests MUST be in same directory as source files for vitest compatibility
-- Use [`conftest.py`](tests/conftest.py:1) fixtures for consistent test setup
-- Mock AI responses using [`mock_requests_post`](tests/conftest.py:104) fixture
-- Test files follow `test_*.py` pattern with `Test*` classes
+## Security & Configuration Tips
+- Never log secrets; mask them with `SecurityUtils.mask_api_key()` and update `.env` values via `env_manager.update_single_var()`.
+- Persist JSON through `safe_json_save()` / `safe_json_load()` to avoid corruption in concurrent runs.
+- Honor contextual routing by checking `pattern_matcher.is_tool_command()` and remember first-turn persistence via `AppState.set_persistent_files()`.
