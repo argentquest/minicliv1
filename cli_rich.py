@@ -502,7 +502,7 @@ class RichCLIInterface:
             result = {
                 'response': ai_response,
                 'model': model,
-                'provider': str(self.ai_processor.provider.__class__.__name__),
+                'provider': self.ai_processor.provider,
                 'processing_time': processing_time,
                 'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'response_length': len(ai_response),
@@ -1254,8 +1254,11 @@ def analyze(
         
         # Save without confirmation (auto-save)
         try:
-            with open(auto_filename, 'w', encoding='utf-8') as f:
-                f.write(session_content)
+            from file_lock import safe_file_operation
+
+            with safe_file_operation(auto_filename, timeout=10.0):
+                with open(auto_filename, 'w', encoding='utf-8') as f:
+                    f.write(session_content)
             console.print(f"\n[green]SESSION SAVED: {auto_filename}[/green]")
             
             # Show file size
