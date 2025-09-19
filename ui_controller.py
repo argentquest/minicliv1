@@ -12,7 +12,10 @@ from simple_modern_ui import (
     SimpleStatusBar, show_simple_toast
 )
 from tabbed_chat_area import TabbedChatArea
-from models import AppState
+from question_history_ui import QuestionHistoryUI
+from tabbed_conversation_manager import TabbedConversationManager
+from models import AppState, QuestionStatus
+from context_dialog import show_context_dialog
 
 
 class UIController:
@@ -35,6 +38,8 @@ class UIController:
         self.main_container = None
         self.files_list = None
         self.chat_area = None
+        self.question_history_ui = None
+        self.tabbed_conversation_manager = None
         self.status_bar = None
         
         # UI variables
@@ -77,10 +82,10 @@ class UIController:
         
         # Main container
         self.main_container = tk.Frame(self.root, bg=theme.colors['bg_primary'])
-        self.main_container.grid(row=0, column=0, sticky='nsew', padx=15, pady=15)
+        self.main_container.grid(row=0, column=0, sticky='nsew', padx=0, pady=0)
         
         # Configure grid weights
-        self.main_container.columnconfigure(1, weight=1)  # Chat area takes remaining space
+        self.main_container.columnconfigure(0, weight=1)  # Single column takes all space
         self.main_container.rowconfigure(1, weight=1)     # Main content area
         
         # Create sections
@@ -98,7 +103,7 @@ class UIController:
         
         header_frame = tk.Frame(self.main_container, bg=theme.colors['bg_secondary'], 
                                relief='flat', bd=1)
-        header_frame.grid(row=0, column=0, columnspan=2, sticky='ew', pady=(0, 15))
+        header_frame.grid(row=0, column=0, sticky='ew', pady=(0, 0))
         
         # Top row: Title and selections
         self._create_title_and_selections(header_frame)
@@ -111,7 +116,7 @@ class UIController:
         theme = theme_manager.get_current_theme()
         
         top_row = tk.Frame(parent, bg=theme.colors['bg_secondary'])
-        top_row.pack(fill='x', padx=15, pady=(12, 6))
+        top_row.pack(fill='x', padx=8, pady=(6, 3))
         
         # Title
         title_label = SimpleModernLabel(top_row, text="🤖 Code Chat with AI")
@@ -163,7 +168,7 @@ class UIController:
         theme = theme_manager.get_current_theme()
         
         actions_row = tk.Frame(parent, bg=theme.colors['bg_secondary'])
-        actions_row.pack(fill='x', padx=15, pady=(6, 12))
+        actions_row.pack(fill='x', padx=8, pady=(3, 6))
         
         # Primary actions (left side)
         self._create_primary_actions(actions_row)
@@ -178,22 +183,33 @@ class UIController:
         primary_actions = tk.Frame(parent, bg=theme.colors['bg_secondary'])
         primary_actions.pack(side='left')
         
+        # Context button
+        context_btn = SimpleModernButton(primary_actions, text="Set Context", 
+                                       command=self._on_set_context,
+                                       style_type='accent', icon_action='folder',
+                                       tooltip="Select files to use as context for AI conversations")
+        context_btn.pack(side='left', padx=(0, 10))
+        
         self.send_btn = SimpleModernButton(primary_actions, text="Send Question", 
                                          command=self._on_send_question,
-                                         style_type='primary', icon_action='send')
+                                         style_type='primary', icon_action='send',
+                                         tooltip="Send your question to the AI model")
         self.send_btn.pack(side='left', padx=(0, 10))
         
         self.execute_system_btn = SimpleModernButton(primary_actions, text="Execute System Prompt", 
                                                    command=self._on_execute_system_prompt,
-                                                   style_type='accent', icon_action='play')
+                                                   style_type='accent', icon_action='play',
+                                                   tooltip="Execute the current system prompt without a question")
         self.execute_system_btn.pack(side='left', padx=(0, 10))
         
         clear_btn = SimpleModernButton(primary_actions, text="Clear Response", 
-                                     command=self._on_clear_response, icon_action='clear')
+                                     command=self._on_clear_response, icon_action='clear',
+                                     tooltip="Clear the current AI response")
         clear_btn.pack(side='left', padx=(0, 10))
         
         new_btn = SimpleModernButton(primary_actions, text="New Conversation", 
-                                   command=self._on_new_conversation, icon_action='new')
+                                   command=self._on_new_conversation, icon_action='new',
+                                   tooltip="Start a new conversation and clear history")
         new_btn.pack(side='left')
     
     def _create_secondary_actions(self, parent):
@@ -204,15 +220,18 @@ class UIController:
         secondary_actions.pack(side='right')
         
         save_btn = SimpleModernButton(secondary_actions, text="Save History", 
-                                    command=self._on_save_history, icon_action='save')
+                                    command=self._on_save_history, icon_action='save',
+                                    tooltip="Save conversation history to a file")
         save_btn.pack(side='left', padx=(0, 10))
         
         load_btn = SimpleModernButton(secondary_actions, text="Load History", 
-                                    command=self._on_load_history, icon_action='load')
+                                    command=self._on_load_history, icon_action='load',
+                                    tooltip="Load a previously saved conversation history")
         load_btn.pack(side='left', padx=(0, 10))
         
         settings_btn = SimpleModernButton(secondary_actions, text="Settings", 
-                                        command=self._on_open_settings, icon_action='settings')
+                                        command=self._on_open_settings, icon_action='settings',
+                                        tooltip="Open application settings and configuration")
         settings_btn.pack(side='left', padx=(0, 10))
         
         # Theme toggle button
@@ -220,12 +239,14 @@ class UIController:
         
         system_msg_btn = SimpleModernButton(secondary_actions, text="System Message", 
                                           command=self._on_open_system_message_editor,
-                                          icon_action='ai')
+                                          icon_action='ai',
+                                          tooltip="Edit system messages and AI prompts")
         system_msg_btn.pack(side='left', padx=(0, 10))
         
         about_btn = SimpleModernButton(secondary_actions, text="About", 
                                      command=self._on_open_about,
-                                     icon_action='info')
+                                     icon_action='info',
+                                     tooltip="About this application and version information")
         about_btn.pack(side='left')
     
     def _create_theme_toggle_button(self, parent):
@@ -235,70 +256,27 @@ class UIController:
         theme_text = '☀️ Light' if current_theme == 'dark' else '🌙 Dark'
         
         self.theme_btn = SimpleModernButton(parent, text=theme_text, 
-                                          command=self._on_toggle_theme, icon_action=theme_icon)
+                                          command=self._on_toggle_theme, icon_action=theme_icon,
+                                          tooltip="Toggle between light and dark themes")
         self.theme_btn.pack(side='left', padx=(0, 10))
     
     def _create_main_content_with_directory(self):
-        """Create the main content area with directory section."""
+        """Create the main content area."""
         theme = theme_manager.get_current_theme()
         
-        # Left side container - fixed 300px width
-        left_container = tk.Frame(self.main_container, bg=theme.colors['bg_primary'], width=300)
-        left_container.grid(row=1, column=0, sticky='nsew', padx=(0, 10))
-        left_container.grid_propagate(False)
-        left_container.rowconfigure(1, weight=1)
-        left_container.columnconfigure(0, weight=1)
+        # Configure main container to have only one column now
+        self.main_container.columnconfigure(0, weight=1)  # Single column takes all space
         
-        # Directory section
-        self._create_directory_section(left_container)
-        
-        # File list
-        self.files_list = SimpleFilesList(left_container, 
-                                         selection_callback=self._on_file_selection_change)
-        self.files_list.grid(row=1, column=0, sticky='nsew')
-        
-        # Chat area (right side) - with tabs
-        self.chat_area = TabbedChatArea(self.main_container, self.state.conversation_history, 
-                                       parent_window=self, send_callback=self._on_send_question)
-        self.chat_area.grid(row=1, column=1, sticky='nsew')
+        # Use tabbed conversation manager with enhanced chat areas
+        self.tabbed_conversation_manager = TabbedConversationManager(self.main_container, 
+                                                                   submit_callback=self._on_question_submitted)
+        self.tabbed_conversation_manager.grid(row=1, column=0, sticky='nsew')
     
-    def _create_directory_section(self, parent):
-        """Create directory selection section."""
-        theme = theme_manager.get_current_theme()
-        
-        dir_frame = tk.Frame(parent, bg=theme.colors['bg_secondary'], relief='flat', bd=1)
-        dir_frame.grid(row=0, column=0, sticky='ew', pady=(0, 10))
-        
-        dir_container = tk.Frame(dir_frame, bg=theme.colors['bg_secondary'])
-        dir_container.pack(fill='x', padx=15, pady=15)
-        
-        # Directory info
-        dir_info_frame = tk.Frame(dir_container, bg=theme.colors['bg_secondary'])
-        dir_info_frame.pack(fill='x', pady=(0, 10))
-        
-        SimpleModernLabel(dir_info_frame, text="📁 Codebase Directory:").pack(side='left')
-        
-        self.dir_label = SimpleModernLabel(dir_info_frame, text="No directory selected")
-        self.dir_label.pack(side='left', padx=(10, 0))
-        
-        # Directory buttons
-        button_frame = tk.Frame(dir_container, bg=theme.colors['bg_secondary'])
-        button_frame.pack()
-        
-        browse_btn = SimpleModernButton(button_frame, text="Browse", 
-                                      command=self._on_select_directory, 
-                                      style_type='primary', icon_action='folder')
-        browse_btn.pack(side='left', padx=(0, 10))
-        
-        refresh_btn = SimpleModernButton(button_frame, text="Refresh", 
-                                       command=self._on_refresh_codebase,
-                                       icon_action='refresh')
-        refresh_btn.pack(side='left')
     
     def _create_status_bar(self):
         """Create the status bar."""
         self.status_bar = SimpleStatusBar(self.main_container)
-        self.status_bar.grid(row=2, column=0, columnspan=2, sticky='ew', pady=(15, 0))
+        self.status_bar.grid(row=2, column=0, sticky='ew', pady=(0, 0))
     
     # Event handler methods (delegate to callbacks)
     def _on_model_change(self, event):
@@ -390,6 +368,18 @@ class UIController:
         callback = self.get_callback('file_selection_change')
         if callback:
             callback()
+            
+    def _on_question_submitted(self, question: str):
+        """Handle question submission from new UI."""
+        callback = self.get_callback('question_submitted')
+        if callback:
+            callback(question)
+            
+    def _on_set_context(self):
+        """Handle set context action."""
+        callback = self.get_callback('set_context')
+        if callback:
+            callback()
     
     # UI update methods
     def update_directory_label(self, directory: str):
@@ -442,48 +432,73 @@ class UIController:
     # Utility methods for accessing UI components
     def get_question(self) -> str:
         """Get current question text."""
-        if hasattr(self, 'chat_area'):
-            return self.chat_area.get_question()
-        return ""
+        return ""  # Questions are submitted directly in the new UI
     
     def set_response(self, response: str):
         """Set AI response."""
-        if hasattr(self, 'chat_area'):
-            self.chat_area.set_response(response)
+        # Response is handled through question status updates in new UI
+        pass
     
     def clear_response(self):
         """Clear AI response."""
-        if hasattr(self, 'chat_area'):
-            self.chat_area.clear_response()
+        # No single response area to clear in new UI
+        pass
     
     def clear_question(self):
         """Clear question text."""
-        if hasattr(self, 'chat_area'):
-            self.chat_area.clear_question()
+        # Questions are cleared automatically after submission in new UI
+        pass
+            
+    # New methods for question history UI
+    def add_question_to_history(self, question_status: QuestionStatus):
+        """Add a question to the history display."""
+        if hasattr(self, 'tabbed_conversation_manager'):
+            # Get context files if available
+            context_files = self.state.persistent_selected_files if hasattr(self.state, 'persistent_selected_files') else []
+            
+            # Add user message to active tab with context
+            self.tabbed_conversation_manager.add_message_to_active_tab(
+                'user', question_status.question, context_files=context_files)
+            
+    def update_question_in_history(self, question_index: int, status: str, response: str = "", 
+                                  tokens_used: int = 0, processing_time: float = 0.0, model_used: str = ""):
+        """Update a question's status in the history."""
+        if hasattr(self, 'tabbed_conversation_manager') and status == "completed" and response:
+            # Add assistant response to active tab
+            self.tabbed_conversation_manager.add_message_to_active_tab(
+                'assistant', response, tokens_used, processing_time, model_used)
+            
+    def clear_question_history(self):
+        """Clear all questions from history."""
+        if hasattr(self, 'tabbed_conversation_manager'):
+            self.tabbed_conversation_manager.clear_active_tab()
+            
+    def set_question_input_enabled(self, enabled: bool):
+        """Enable or disable question input."""
+        if hasattr(self, 'tabbed_conversation_manager'):
+            self.tabbed_conversation_manager.set_input_enabled(enabled)
     
     def get_selected_files(self) -> List[str]:
         """Get selected file paths."""
-        if hasattr(self, 'files_list'):
-            return self.files_list.get_selected_file_paths()
+        # File selection is now handled through context dialog
         return []
     
     def get_file_selection_count(self) -> int:
         """Get number of selected files."""
-        if hasattr(self, 'files_list'):
-            return self.files_list.get_selection_count()
+        # File selection is now handled through context dialog
         return 0
     
     def add_files_to_list(self, files: List[str], file_paths: List[str]):
         """Add files to the file list."""
-        if hasattr(self, 'files_list'):
-            self.files_list.add_files(files, file_paths)
+        # File selection is now handled through context dialog
+        pass
     
     def update_conversation_history(self, conversation_history):
         """Update conversation history in chat area."""
-        if hasattr(self, 'chat_area'):
-            self.chat_area.update_conversation_history(conversation_history)
+        # Conversation history is handled by question history UI
+        pass
     
     def refresh_tool_variables(self):
         """Refresh tool variables in chat area."""
-        if hasattr(self, 'chat_area'):
-            self.chat_area.refresh_tool_variables()
+        if hasattr(self, 'tabbed_conversation_manager'):
+            self.tabbed_conversation_manager.refresh_tool_variables()

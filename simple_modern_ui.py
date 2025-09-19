@@ -15,10 +15,10 @@ from icons import icon_manager
 from code_fragment_parser import CodeFragmentParser, show_code_fragments_dialog
 
 class SimpleModernButton(tk.Button):
-    """Simplified modern button with basic styling."""
+    """Simplified modern button with basic styling and tooltip support."""
     
     def __init__(self, parent, text="", command=None, style_type='secondary', 
-                 icon_action=None, **kwargs):
+                 icon_action=None, tooltip=None, **kwargs):
         
         # Add icon if specified
         if icon_action:
@@ -32,9 +32,23 @@ class SimpleModernButton(tk.Button):
                 'text': text,
                 'command': command,
                 'bg': theme.colors['primary'],
+                'fg': 'white',
                 'relief': 'flat',
                 'borderwidth': 0,
                 'cursor': 'hand2',
+                'font': ('Segoe UI', 9, 'bold'),
+                **kwargs
+            }
+        elif style_type == 'accent':
+            config = {
+                'text': text,
+                'command': command,
+                'bg': theme.colors['accent'],
+                'fg': 'white',
+                'relief': 'flat',
+                'borderwidth': 0,
+                'cursor': 'hand2',
+                'font': ('Segoe UI', 9, 'bold'),
                 **kwargs
             }
         else:
@@ -42,13 +56,94 @@ class SimpleModernButton(tk.Button):
                 'text': text,
                 'command': command,
                 'bg': theme.colors['bg_tertiary'],
+                'fg': theme.colors['text_primary'],
                 'relief': 'flat',
                 'borderwidth': 1,
                 'cursor': 'hand2',
+                'font': ('Segoe UI', 9),
                 **kwargs
             }
         
         super().__init__(parent, **config)
+        
+        # Store original colors for hover effects
+        self.original_bg = config['bg']
+        self.style_type = style_type
+        
+        # Add hover effects
+        self._setup_hover_effects()
+        
+        # Add tooltip if provided
+        if tooltip:
+            self._add_tooltip(tooltip)
+    
+    def _setup_hover_effects(self):
+        """Add hover effects to the button."""
+        theme = theme_manager.get_current_theme()
+        
+        if self.style_type == 'primary':
+            hover_color = theme.colors['primary_hover']
+        elif self.style_type == 'accent':
+            hover_color = theme.colors['accent_hover']
+        else:
+            hover_color = theme.colors['hover']
+        
+        def on_enter(e):
+            self.configure(bg=hover_color)
+            
+        def on_leave(e):
+            self.configure(bg=self.original_bg)
+            
+        self.bind("<Enter>", on_enter)
+        self.bind("<Leave>", on_leave)
+    
+    def _add_tooltip(self, text):
+        """Add tooltip to the button."""
+        self.tooltip_text = text
+        self.tooltip_window = None
+        self.tooltip_timer = None
+        
+        def show_tooltip(event):
+            if self.tooltip_window:
+                return
+                
+            x = event.x_root + 15
+            y = event.y_root + 10
+            
+            self.tooltip_window = tk.Toplevel(self)
+            self.tooltip_window.wm_overrideredirect(True)
+            self.tooltip_window.configure(bg='#2d2d2d')
+            self.tooltip_window.geometry(f"+{x}+{y}")
+            
+            # Add shadow effect
+            self.tooltip_window.attributes('-topmost', True)
+            
+            label = tk.Label(self.tooltip_window, text=text,
+                           bg='#2d2d2d', fg='white',
+                           font=('Segoe UI', 9),
+                           relief='solid', bd=1,
+                           padx=10, pady=5)
+            label.pack()
+            
+        def hide_tooltip():
+            if self.tooltip_timer:
+                self.after_cancel(self.tooltip_timer)
+                self.tooltip_timer = None
+            if self.tooltip_window:
+                self.tooltip_window.destroy()
+                self.tooltip_window = None
+        
+        def on_enter(event):
+            # Start timer for tooltip
+            hide_tooltip()  # Cancel any existing
+            self.tooltip_timer = self.after(800, lambda: show_tooltip(event))
+            
+        def on_leave(event):
+            hide_tooltip()
+        
+        # Bind tooltip events without conflicting with hover
+        self.bind("<Enter>", on_enter, add='+')
+        self.bind("<Leave>", on_leave, add='+')
 
 class SimpleModernLabel(tk.Label):
     """Simplified modern label."""

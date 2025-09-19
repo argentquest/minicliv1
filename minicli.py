@@ -102,7 +102,7 @@ class SimpleModernCodeChatApp:
         # Reload theme preference after dotenv loads .env file
         theme_manager._load_theme_preference()
 
-        # Initialize UI controller with available models
+        # Initialize UI controller with available models (always use new question history UI)
         self.ui_controller = UIController(self.root, self.state, self.models)
         self._setup_ui_callbacks()
 
@@ -158,6 +158,8 @@ class SimpleModernCodeChatApp:
         self.ui_controller.set_callback('refresh_codebase', self._refresh_codebase)
         self.ui_controller.set_callback('file_selection_change', self._on_file_selection_change)
         self.ui_controller.set_callback('refresh_system_message_options', self._refresh_system_message_options)
+        self.ui_controller.set_callback('question_submitted', self._on_question_submitted)
+        self.ui_controller.set_callback('set_context', self._on_set_context)
     
     # UI creation is now handled by UIController
     
@@ -330,8 +332,73 @@ class SimpleModernCodeChatApp:
         else:
             self.ui_controller.set_status("Ready to analyze your code! 🚀", "ready")
     
+    def _on_set_context(self):
+        """Handle set context action - show context dialog."""
+        try:
+            from context_dialog import show_context_dialog
+            
+            # Show context dialog with current context
+            def on_context_change(new_context):
+                """Handle context change - clear history if context changed."""
+                old_context = set(self.state.persistent_selected_files)
+                new_context_set = set(new_context)
+                
+                if old_context != new_context_set:
+                    # Context changed - clear conversation history
+                    self.state.clear_conversation()
+                    if hasattr(self.ui_controller, 'clear_question_history'):
+                        self.ui_controller.clear_question_history()
+                    
+                    # Update context
+                    self.state.persistent_selected_files = new_context
+                    
+                    # Update UI status
+                    file_count = len(new_context)
+                    self.ui_controller.set_status(f"Context updated: {file_count} files selected", "success")
+            
+            # Show the dialog
+            result, new_context = show_context_dialog(
+                self.root, 
+                current_context=self.state.persistent_selected_files,
+                context_change_callback=on_context_change
+            )
+            
+        except Exception as e:
+            self.logger.error(f"Error opening context dialog: {e}")
+            self.ui_controller.set_status(f"Error opening context dialog: {e}", "error")
+    
+    def _on_question_submitted(self, question: str):
+        """Handle question submission from new UI."""
+        if not question.strip():
+            self.ui_controller.show_toast("Please enter a question", "warning")
+            return
+        
+        if not self.ai_processor.validate_api_key():
+            self.ui_controller.show_toast("Please configure your API key in Settings", "warning")
+            return
+        
+        # Get context files (optional - can be empty)
+        selected_files = self.ui_controller.get_selected_files() if hasattr(self.ui_controller, 'get_selected_files') else []
+        persistent_files = self.state.get_persistent_files()
+        is_first_message = len(self.state.conversation_history) == 0
+        
+        # Files are optional - no validation required
+        
+        # Add question to history with working status
+        question_status = self.state.add_question(question)
+        self.ui_controller.add_question_to_history(question_status)
+        
+        # Get the question index for status updates
+        question_index = len(self.state.question_history) - 1
+        
+        self.ui_controller.set_status("Processing your question...", "info")
+        self.ui_controller.set_question_input_enabled(False)
+        
+        # Run in separate thread
+        threading.Thread(target=self._process_question_async_new, args=(question, question_index), daemon=True).start()
+
     def _send_question(self):
-        """Send question to AI."""
+        """Send question to AI (legacy method for old UI)."""
         question = self.ui_controller.get_question()
         if not question:
             self.ui_controller.show_toast("Please enter a question", "warning")
@@ -404,9 +471,58 @@ class SimpleModernCodeChatApp:
             error_msg = str(e)
             self.root.after(0, self._finalize_system_prompt_processing, f"Error executing system prompt: {error_msg}", False)
     
+    @log_performance("process_question_async_new")  
+    def _process_question_async_new(self, question: str, question_index: int):
+        """Process question asynchronously for new UI."""
+        import time
+        start_time = time.time()
+        
+        try:
+            self.logger.set_context(component="app", operation="process_question")
+            self.logger.info(f"Processing question: {question[:100]}{'...' if len(question) > 100 else ''}")
+            
+            # Determine conversation context
+            is_first_message = len(self.state.conversation_history) == 0
+            needs_codebase_context = is_first_message or self._is_tool_command(question)
+            
+            # Add user message to conversation history
+            self.state.conversation_history.append(ConversationMessage(role="user", content=question))
+            
+            # Get codebase content based on context
+            codebase_content = self._get_codebase_content_for_question(is_first_message, needs_codebase_context)
+            
+            # Process question with AI and get statistics
+            ai_response, tokens_used = self._process_with_ai_and_stats(question, codebase_content)
+            
+            # Calculate processing time
+            processing_time = time.time() - start_time
+            
+            # Update conversation history with response
+            self._update_conversation_history(ai_response, is_first_message, codebase_content)
+            
+            # Update question status in the state with statistics
+            self.state.update_question_status(
+                question_index, "completed", ai_response, 
+                tokens_used, processing_time, self.state.selected_model
+            )
+            
+            # Update UI on main thread
+            self.root.after(0, self._finalize_question_processing_new, question_index, ai_response, True, 
+                          tokens_used, processing_time, self.state.selected_model)
+            
+        except Exception as e:
+            error_msg = str(e)
+            processing_time = time.time() - start_time
+            self.logger.exception(f"Error processing question: {error_msg}")
+            
+            # Update question status to error
+            self.state.update_question_status(question_index, "error", f"Error: {error_msg}")
+            
+            self.root.after(0, self._finalize_question_processing_new, question_index, f"Error: {error_msg}", False)
+
     @log_performance("process_question_async")  
     def _process_question_async(self, question):
-        """Process question asynchronously."""
+        """Process question asynchronously (legacy method for old UI)."""
         try:
             self.logger.set_context(component="app", operation="process_question")
             self.logger.info(f"Processing question: {question[:100]}{'...' if len(question) > 100 else ''}")
@@ -469,13 +585,48 @@ class SimpleModernCodeChatApp:
     
     def _process_with_ai(self, question: str, codebase_content: str) -> str:
         """Process question with AI and return response."""
+        # For follow-up questions, only send user/assistant messages, no system message with codebase
+        # The system message with codebase is only sent once on the first turn
+        conversation_for_api = []
+        for msg in self.state.conversation_history[:-1]:  # Exclude current question
+            if msg.role != "system":  # Skip system messages to avoid sending codebase repeatedly
+                conversation_for_api.append(msg.to_dict())
+        
         return self.ai_processor.process_question(
             question=question,
-            conversation_history=[msg.to_dict() for msg in self.state.conversation_history[:-1]],
+            conversation_history=conversation_for_api,
             codebase_content=codebase_content,
             model=self.state.selected_model,
             update_callback=lambda response, status: self.root.after(0, self.ui_controller.set_status, status, "success")
         )
+        
+    def _process_with_ai_and_stats(self, question: str, codebase_content: str):
+        """Process question with AI and return response with token statistics."""
+        # For follow-up questions, only send user/assistant messages, no system message with codebase
+        conversation_for_api = []
+        for msg in self.state.conversation_history[:-1]:  # Exclude current question
+            if msg.role != "system":  # Skip system messages to avoid sending codebase repeatedly
+                conversation_for_api.append(msg.to_dict())
+        
+        # Get the AI response
+        ai_response = self.ai_processor.process_question(
+            question=question,
+            conversation_history=conversation_for_api,
+            codebase_content=codebase_content,
+            model=self.state.selected_model,
+            update_callback=lambda response, status: self.root.after(0, self.ui_controller.set_status, status, "success")
+        )
+        
+        # Try to get token usage from the last API call
+        tokens_used = 0
+        try:
+            # Access the provider's last token usage if available
+            if hasattr(self.ai_processor, '_provider') and hasattr(self.ai_processor._provider, '_last_token_usage'):
+                tokens_used = self.ai_processor._provider._last_token_usage
+        except:
+            pass  # If we can't get token usage, use 0
+            
+        return ai_response, tokens_used
     
     def _update_conversation_history(self, ai_response: str, is_first_message: bool, codebase_content: str):
         """Update conversation history with AI response and system message if needed."""
@@ -512,8 +663,25 @@ class SimpleModernCodeChatApp:
         # Update response UI
         self._update_response_ui(response, success)
     
+    def _finalize_question_processing_new(self, question_index: int, response: str, success: bool, 
+                                         tokens_used: int = 0, processing_time: float = 0.0, model_used: str = ""):
+        """Finalize question processing for new UI."""
+        # Update question status in UI
+        if success:
+            self.ui_controller.update_question_in_history(
+                question_index, "completed", response, 
+                tokens_used, processing_time, model_used
+            )
+            self.ui_controller.set_status("Question completed successfully", "success")
+        else:
+            self.ui_controller.update_question_in_history(question_index, "error", response)
+            self.ui_controller.set_status("Error processing question", "error")
+        
+        # Re-enable input
+        self.ui_controller.set_question_input_enabled(True)
+
     def _finalize_question_processing(self, response: str, success: bool):
-        """Finalize question processing by updating UI."""
+        """Finalize question processing by updating UI (legacy method for old UI)."""
         # Update conversation history in tabbed chat area
         self._update_conversation_in_tabs()
         
@@ -551,9 +719,10 @@ class SimpleModernCodeChatApp:
     def _new_conversation(self):
         """Start a new conversation."""
         self.state.clear_conversation()
-        self.ui_controller.clear_response()
-        self.ui_controller.clear_question()
-        self._update_conversation_in_tabs()  # Update history tab
+        
+        # Clear question history for new UI
+        self.ui_controller.clear_question_history()
+            
         self.ui_controller.set_status("New conversation started! 🆕", "info")
     
     def _save_history(self):
@@ -940,6 +1109,12 @@ def main():
     else:
         # GUI mode (default)
         try:
+            # Check for legacy UI flag
+            use_legacy_ui = '--legacy-ui' in sys.argv
+            if use_legacy_ui:
+                sys.argv.remove('--legacy-ui')
+                os.environ['USE_QUESTION_HISTORY_UI'] = 'false'
+            
             root = tk.Tk()
             app = SimpleModernCodeChatApp(root)
             app.run()

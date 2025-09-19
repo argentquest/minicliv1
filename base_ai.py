@@ -61,6 +61,7 @@ class BaseAIProvider(ABC):
     def __init__(self, api_key: str = ""):
         self.api_key = api_key
         self.config = self._get_provider_config()
+        self._last_token_usage = 0  # Store last API call token usage
         
     @abstractmethod
     def _get_provider_config(self) -> AIProviderConfig:
@@ -267,6 +268,9 @@ class BaseAIProvider(ABC):
             
             # Extract token usage information using provider-specific method
             prompt_tokens, completion_tokens, total_tokens = self._extract_token_usage(response_data)
+            
+            # Store token usage for statistics
+            self._last_token_usage = total_tokens
             
             # Update UI if callback provided
             if update_callback:

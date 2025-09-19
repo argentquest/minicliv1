@@ -148,13 +148,18 @@ class ModernLightTheme(Theme):
             'text_muted': '#adb5bd',      # Placeholder text, disabled (light gray)
             
             # Interactive element colors
-            'primary': '#0d6efd',         # Primary action buttons (blue)
-            'primary_hover': '#0b5ed7',   # Primary button hover state (darker blue)
+            'primary': '#007bff',         # Primary action buttons (modern blue)
+            'primary_hover': '#0056b3',   # Primary button hover state (darker blue)
+            'accent': '#6f42c1',          # Accent color for special elements (purple)
+            'accent_hover': '#5a32a3',    # Accent hover state (darker purple)
             
             # Semantic colors for user feedback
-            'success': '#198754',         # Success messages, confirmations (green)
+            'success': '#28a745',         # Success messages, confirmations (green)
+            'success_light': '#d4edda',   # Light success background
             'warning': '#ffc107',         # Warnings, alerts (yellow/orange)
+            'warning_light': '#fff3cd',   # Light warning background
             'danger': '#dc3545',          # Errors, destructive actions (red)
+            'danger_light': '#f8d7da',    # Light danger background
             
             # Interactive states
             'selection': '#e7f3ff',       # Selected list items, highlights (light blue)
@@ -270,9 +275,14 @@ class ModernDarkTheme(Theme):
             'text_muted': '#808080',      # Muted text
             'primary': '#4dabf7',         # Primary buttons
             'primary_hover': '#339af0',   # Primary hover
+            'accent': '#9775fa',          # Accent color for special elements (purple)
+            'accent_hover': '#7c3aed',    # Accent hover state (darker purple)
             'success': '#51cf66',         # Success states
+            'success_light': '#2b8a3e',   # Light success background
             'warning': '#ffd43b',         # Warning states
+            'warning_light': '#fd7e14',   # Light warning background
             'danger': '#ff6b6b',          # Error states
+            'danger_light': '#c92a2a',    # Light danger background
             'selection': '#2b5797',       # Selected items
             'hover': '#404040',           # Hover states
         }

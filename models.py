@@ -87,6 +87,31 @@ class ConversationMessage:
         """
         return {"role": self.role, "content": self.content}
 
+@dataclass  
+class QuestionStatus:
+    """
+    Represents a question with its current processing status.
+    
+    This tracks individual questions through their lifecycle from
+    submission through processing to completion.
+    
+    Attributes:
+        question (str): The question text
+        status (str): Current status - "working", "completed", "error"
+        response (str): AI response (empty until completed)
+        timestamp (str): When the question was submitted
+        tokens_used (int): Total tokens used in the API call
+        processing_time (float): Time taken to process the question in seconds
+        model_used (str): AI model used for processing
+    """
+    question: str
+    status: str = "working"  # working, completed, error
+    response: str = ""
+    timestamp: str = ""
+    tokens_used: int = 0
+    processing_time: float = 0.0
+    model_used: str = ""
+
 class AppState:
     """
     Manages the runtime application state and user session data.
@@ -112,6 +137,9 @@ class AppState:
         """
         # Conversation tracking
         self.conversation_history: List[ConversationMessage] = []
+        
+        # Question history tracking for new UI
+        self.question_history: List[QuestionStatus] = []
         
         # File and directory management
         self.selected_directory: str = ""
@@ -148,11 +176,54 @@ class AppState:
         This method performs a complete conversation reset:
         1. Clears all conversation history
         2. Resets persistent file selections
+        3. Clears question history
         
         Used when starting a new conversation or switching system prompts.
         """
         self.conversation_history = []
         self.persistent_selected_files = []  # Reset file context for clean start
+        self.question_history = []  # Reset question history for clean start
+        
+    def add_question(self, question: str) -> QuestionStatus:
+        """
+        Add a new question to the question history with working status.
+        
+        Args:
+            question (str): The question text
+            
+        Returns:
+            QuestionStatus: The created question status object
+        """
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        question_status = QuestionStatus(question=question, timestamp=timestamp)
+        self.question_history.append(question_status)
+        return question_status
+        
+    def update_question_status(self, question_index: int, status: str, response: str = "", 
+                             tokens_used: int = 0, processing_time: float = 0.0, model_used: str = ""):
+        """
+        Update the status of a question in the history.
+        
+        Args:
+            question_index (int): Index of the question in the history
+            status (str): New status ("working", "completed", "error")
+            response (str): AI response (optional)
+            tokens_used (int): Total tokens used in the API call
+            processing_time (float): Time taken to process the question in seconds
+            model_used (str): AI model used for processing
+        """
+        if 0 <= question_index < len(self.question_history):
+            question_status = self.question_history[question_index]
+            question_status.status = status
+            if response:
+                question_status.response = response
+            if tokens_used > 0:
+                question_status.tokens_used = tokens_used
+            if processing_time > 0:
+                question_status.processing_time = processing_time
+            if model_used:
+                question_status.model_used = model_used
         
     def set_persistent_files(self, selected_files: List[str]):
         """
