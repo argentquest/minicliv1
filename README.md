@@ -1,12 +1,14 @@
 # Code Chat with AI
 
-> A modern desktop application for intelligent code analysis and AI-powered development assistance
+> A modern full-stack web application for intelligent code analysis and AI-powered development assistance
 
 [![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)](https://python.org)
+[![React](https://img.shields.io/badge/React-18+-61dafb.svg)](https://reactjs.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688.svg)](https://fastapi.tiangolo.com)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com)
 
-**Code Chat with AI** is a powerful desktop application that brings AI assistance directly to your development workflow. Select any codebase, choose from specialized AI experts, and get intelligent insights, code reviews, and architectural guidance through an intuitive chat interface.
+**Code Chat with AI** is a powerful full-stack web application that brings AI assistance directly to your development workflow. Select any codebase, choose from specialized AI experts, and get intelligent insights, code reviews, and architectural guidance through an intuitive web interface.
 
 ![Application Screenshot](docs/screenshot.png)
 
@@ -16,6 +18,7 @@
 
 ### Prerequisites
 - **Python 3.7 or higher** ([Download here](https://python.org/downloads/))
+- **Node.js 16 or higher** ([Download here](https://nodejs.org/))
 - **Git** (optional, for cloning)
 - **API Key** from [OpenAI](https://openai.com/api/) or [OpenRouter](https://openrouter.ai/)
 
@@ -29,21 +32,28 @@
    
    *Or download and extract the ZIP file*
 
-2. **Install Dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-   
-   *For virtual environment (recommended):*
-   ```bash
-   python -m venv venv
-   # Windows:
-   venv\Scripts\activate
-   # macOS/Linux:
-   source venv/bin/activate
-   
-   pip install -r requirements.txt
-   ```
+2. **Install Backend Dependencies**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+    *For virtual environment (recommended):*
+    ```bash
+    python -m venv venv
+    # Windows:
+    venv\Scripts\activate
+    # macOS/Linux:
+    source venv/bin/activate
+
+    pip install -r requirements.txt
+    ```
+
+3. **Install Frontend Dependencies**
+    ```bash
+    cd web1
+    npm install
+    cd ..
+    ```
 
 3. **Set Up API Keys**
    
@@ -68,31 +78,37 @@
 
 4. **Launch the Application**
 
-    **GUI Mode (Recommended):**
-    ```bash
-    python modern_main.py
-    ```
+     **Web Application Mode (Recommended):**
+     ```bash
+     # Start the FastAPI backend
+     python fastapi_server.py
 
-    **Alternative GUI Launchers:**
-    ```bash
-    # For window visibility issues:
-    python start_ui.py
+     # In another terminal, start the React frontend
+     cd web1 && npm run dev
+     ```
 
-    # Windows batch file:
-    run_app.bat
-    ```
+     **Desktop GUI Mode:**
+     ```bash
+     python modern_main.py
+     ```
 
-    **CLI Modes:**
-    ```bash
-    # Standard CLI mode:
-    python minicli.py --cli --folder ./src --question "What does this code do?"
+     **Alternative GUI Launchers:**
+     ```bash
+     # For window visibility issues:
+     python start_ui.py
 
-    # Rich CLI mode (enhanced terminal interface):
-    python codechat-rich.py analyze ./src "What does this code do?"
+     # Windows batch file:
+     run_app.bat
+     ```
 
-    # Interactive Rich CLI:
-    python codechat-rich.py interactive
-    ```
+     **CLI Modes:**
+     ```bash
+     # Standard CLI mode:
+     python minicli.py --cli --folder ./src --question "What does this code do?"
+
+     # Rich CLI mode (enhanced terminal interface):
+     python codechat-rich.py analyze ./src "What does this code do?"
+     ```
 
 ---
 
@@ -100,19 +116,22 @@
 
 ```mermaid
 flowchart TD
-    A[Start Setup] --> B[Install Python 3.7+]
-    B --> C[Clone Repository]
-    C --> D[Install Dependencies<br/>pip install -r requirements.txt]
-    D --> E[Setup API Keys<br/>Create .env file]
-    E --> F[Launch Application<br/>python modern_main.py]
-    F --> G[Configure Settings<br/>API keys, model selection]
-    G --> H[Select Codebase<br/>Browse directory]
-    H --> I[Choose Expert Mode<br/>System message dropdown]
-    I --> J[Start Chatting<br/>Ask questions about code]
-    J --> K[Ready to Use!]
+     A[Start Setup] --> B[Install Python 3.7+ & Node.js 16+]
+     B --> C[Clone Repository]
+     C --> D[Install Backend Dependencies<br/>pip install -r requirements.txt]
+     D --> E[Install Frontend Dependencies<br/>cd web1 && npm install]
+     E --> F[Setup API Keys<br/>Create .env file]
+     F --> G[Start Backend<br/>python fastapi_server.py]
+     G --> H[Start Frontend<br/>cd web1 && npm run dev]
+     H --> I[Open Browser<br/>http://localhost:5173]
+     I --> J[Configure Settings<br/>API keys, model selection]
+     J --> K[Select Codebase<br/>Browse directory]
+     K --> L[Choose Expert Mode<br/>System message dropdown]
+     L --> M[Start Chatting<br/>Ask questions about code]
+     M --> N[Ready to Use!]
 
-    style A fill:#e1f5fe
-    style K fill:#c8e6c9
+     style A fill:#e1f5fe
+     style N fill:#c8e6c9
 ```
 
 ---
@@ -121,28 +140,27 @@ flowchart TD
 
 ```mermaid
 graph TB
-    A[User Interface Layer] --> B[Application Core]
-    B --> C[AI Providers]
-    B --> D[File Scanners]
-    B --> E[State Management]
+     A[React Frontend<br/>web1/] --> B[FastAPI Backend<br/>fastapi_server.py]
+     B --> C[AI Providers]
+     B --> D[File Scanners]
+     B --> E[State Management]
 
-    A --> F[GUI Mode<br/>modern_main.py]
-    A --> G[CLI Modes<br/>minicli.py, codechat-rich.py]
-    A --> H[API Server<br/>fastapi_server.py]
+     A --> F[HTTP/JSON API<br/>localhost:8000]
+     F --> B
 
-    C --> I[OpenRouter Provider<br/>openrouter_provider.py]
-    C --> J[Tachyon Provider<br/>tachyon_provider.py]
+     C --> G[OpenRouter Provider<br/>providers/openrouter_provider.py]
+     C --> H[Tachyon Provider<br/>providers/tachyon_provider.py]
 
-    D --> K[Standard Scanner<br/>file_scanner.py]
-    D --> L[Lazy Scanner<br/>lazy_file_scanner.py]
+     D --> I[Standard Scanner<br/>file_scanner.py]
+     D --> J[Lazy Scanner<br/>lazy_file_scanner.py]
 
-    E --> M[Data Models<br/>models.py]
-    E --> N[Environment<br/>env_manager.py]
-    E --> O[Logging<br/>logger.py]
+     E --> K[Conversation Service<br/>web_backend/services/]
+     E --> L[Environment<br/>env_manager.py]
+     E --> M[Logging<br/>logger.py]
 
-    B --> P[AI Processing<br/>ai.py]
-    B --> Q[Security Utils<br/>security_utils.py]
-    B --> R[Pattern Matching<br/>pattern_matcher.py]
+     B --> N[AI Processing<br/>ai.py]
+     B --> O[Security Utils<br/>security_utils.py]
+     B --> P[Pattern Matching<br/>pattern_matcher.py]
 ```
 
 ---
@@ -311,21 +329,40 @@ Access advanced configuration through **Settings** → **Environment Variables**
 
 ```
 code-chat-ai/
+├── 📁 Web Frontend (React)
+│   ├── web1/                  # React application
+│   │   ├── src/               # React source code
+│   │   │   ├── components/    # React components
+│   │   │   ├── api.ts         # API client for backend communication
+│   │   │   ├── App.tsx        # Main React application
+│   │   │   └── types.ts       # TypeScript type definitions
+│   │   ├── package.json       # Frontend dependencies
+│   │   └── vite.config.ts     # Vite build configuration
+│   └──
+├── 📁 Backend (FastAPI)
+│   ├── fastapi_server.py      # Main FastAPI server
+│   ├── web_backend/            # FastAPI application modules
+│   │   ├── api.py              # REST API endpoints
+│   │   ├── schemas.py          # Pydantic models
+│   │   └── services/           # Business logic services
+│   └──
 ├── 📁 Core Application
 │   ├── minicli.py              # Main application orchestration
-│   ├── modern_main.py          # Primary application entry point
+│   ├── modern_main.py          # Desktop GUI application
 │   ├── start_ui.py             # Alternative launcher with UI forcing
 │   └── run_app.bat             # Windows batch launcher
 │
 ├── 📁 AI & Processing
 │   ├── ai.py                   # AI API integration and processing
 │   ├── base_ai.py              # Base AI provider interface
-│   ├── openrouter_provider.py  # OpenRouter AI provider implementation
-│   ├── tachyon_provider.py     # Tachyon AI provider implementation
+│   ├── providers/              # AI provider implementations
+│   │   ├── openrouter_provider.py  # OpenRouter AI provider
+│   │   ├── tachyon_provider.py     # Tachyon AI provider
+│   │   └── custom_provider.py      # Custom provider support
 │   ├── system_message_manager.py  # Expert mode management
 │   └── systemmessage_*.txt     # Expert mode definitions
 │
-├── 📁 User Interface
+├── 📁 Desktop UI Components
 │   ├── simple_modern_ui.py     # Modern UI components
 │   ├── tabbed_chat_area.py     # Chat interface with tabs
 │   ├── theme.py                # Dark/light theme system
@@ -354,7 +391,7 @@ code-chat-ai/
 │   ├── conversation_history_tab.py  # History management
 │   ├── pattern_matcher.py      # Tool command pattern matching
 │   ├── security_utils.py       # Security utilities for API keys
-│   └── api_client.py       # API client utilities
+│   └── api_client.py           # API client utilities
 │
 ├── 📁 Testing
 │   ├── tests/                  # Test suite directory

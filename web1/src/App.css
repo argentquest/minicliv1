@@ -245,16 +245,53 @@
 
 .chat-message__header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 8px;
   font-size: 0.85rem;
   color: var(--color-text-secondary);
+}
+
+.chat-message__header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chat-message__toggle {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.chat-message__toggle:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-tertiary);
+}
+
+.chat-message__toggle:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.chat-message__body--collapsed {
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-family: 'Fira Code', 'Consolas', 'Courier New', monospace;
 }
 
 .chat-message__body {
   white-space: pre-wrap;
   font-size: 0.95rem;
   line-height: 1.5;
+  font-family: 'Fira Code', 'Consolas', 'Courier New', monospace;
 }
 
 .chat-message__meta {

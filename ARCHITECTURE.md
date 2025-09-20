@@ -2,64 +2,68 @@
 
 ## Overview
 
-Code Chat with AI is built using a modular, extensible architecture that supports multiple AI providers, interface modes, and advanced codebase analysis features. This document outlines the key architectural patterns and design decisions that make the application robust, maintainable, and extensible.
+Code Chat with AI is a modern full-stack web application built using a modular, extensible architecture that supports multiple AI providers, interface modes, and advanced codebase analysis features. The application consists of a React frontend providing an intuitive web interface and a FastAPI backend delivering powerful AI-powered code analysis capabilities through a comprehensive REST API.
+
+The architecture emphasizes separation of concerns, with clear boundaries between frontend presentation, backend business logic, and AI provider integrations. This design enables easy maintenance, testing, and extension of functionality while providing a seamless user experience.
 
 ## High-Level Architecture
 
 ```mermaid
 graph TB
-    subgraph "User Interfaces"
-        GUI[GUI Mode<br/>modern_main.py]
-        CLI[Standard CLI<br/>minicli.py]
-        RichCLI[Rich CLI<br/>codechat-rich.py]
-        API[API Server<br/>fastapi_server.py]
-    end
+     subgraph "Frontend Layer"
+         RF[React Frontend<br/>web1/]
+         RT[React Components<br/>TypeScript + Vite]
+         API[API Client<br/>web1/src/api.ts]
+     end
 
-    subgraph "Core Components"
-        UC[UI Controller<br/>ui_controller.py]
-        AS[App State<br/>models.py]
-        AI[AI Processing<br/>ai.py]
-        SM[System Messages<br/>system_message_manager.py]
-    end
+     subgraph "Backend Layer"
+         FA[FastAPI Server<br/>fastapi_server.py]
+         WB[Web Backend<br/>web_backend/]
+         CS[Conversation Service<br/>web_backend/services/]
+         FS[File Service<br/>web_backend/services/]
+         SS[Settings Service<br/>web_backend/services/]
+     end
 
-    subgraph "AI Providers"
-        OR[OpenRouter Provider<br/>openrouter_provider.py]
-        TA[Tachyon Provider<br/>tachyon_provider.py]
-    end
+     subgraph "Core Components"
+         AS[App State<br/>models.py]
+         AI[AI Processing<br/>ai.py]
+         SM[System Messages<br/>system_message_manager.py]
+         FM[File Management<br/>file_scanner.py]
+     end
 
-    subgraph "Data Management"
-        FS[File Scanners<br/>file_scanner.py]
-        EL[Environment<br/>env_manager.py]
-        FL[File Locking<br/>file_lock.py]
-        LOG[Logging<br/>logger.py]
-    end
+     subgraph "AI Providers"
+         OR[OpenRouter Provider<br/>providers/openrouter_provider.py]
+         TA[Tachyon Provider<br/>providers/tachyon_provider.py]
+         CP[Custom Provider<br/>providers/custom_provider.py]
+     end
 
-    subgraph "Utilities"
-        PM[Pattern Matcher<br/>pattern_matcher.py]
-        SU[Security Utils<br/>security_utils.py]
-        CF[Code Fragment Parser<br/>code_fragment_parser.py]
-    end
+     subgraph "Infrastructure"
+         EL[Environment<br/>env_manager.py]
+         LOG[Logging<br/>logger.py]
+         SU[Security Utils<br/>security_utils.py]
+         PM[Pattern Matcher<br/>pattern_matcher.py]
+     end
 
-    GUI --> UC
-    CLI --> UC
-    RichCLI --> UC
-    API --> UC
+     RF --> API
+     API --> FA
+     FA --> WB
+     WB --> CS
+     WB --> FS
+     WB --> SS
 
-    UC --> AS
-    UC --> AI
-    UC --> SM
+     CS --> AS
+     CS --> AI
+     FS --> FM
+     SS --> EL
 
-    AI --> OR
-    AI --> TA
+     AI --> OR
+     AI --> TA
+     AI --> CP
 
-    AS --> FS
-    AS --> EL
-    AS --> FL
-    AS --> LOG
-
-    AI --> PM
-    AI --> SU
-    AI --> CF
+     AI --> PM
+     AI --> SU
+     AS --> LOG
+     FM --> LOG
 ```
 
 ## Core Architectural Patterns

@@ -62,8 +62,8 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Mount the richer web API under /web
-app.include_router(web_router, prefix="/web")
+# Mount the richer web API routes
+app.include_router(web_router)
 
 # Add CORS middleware
 app.add_middleware(
@@ -432,3 +432,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

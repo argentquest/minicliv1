@@ -1,0 +1,8 @@
+Starting Code Chat AI FastAPI Server
+Server will be available at: http://0.0.0.0:8000
+API documentation at: http://0.0.0.0:8000/docs
+==================================================
+INFO:     127.0.0.1:63294 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58633 - "GET /meta/ui-defaults HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58633 - "POST /conversations HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63834 - "GET /system-messages/default HTTP/1.1" 404 Not Found

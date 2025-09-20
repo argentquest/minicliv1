@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class ConversationMessageModel(BaseModel):
@@ -20,8 +20,7 @@ class QuestionStatusModel(BaseModel):
     processing_time: float = Field(default=0.0, alias="processingTime")
     model_used: str = Field(default="", alias="modelUsed")
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class ConversationSummaryModel(BaseModel):
@@ -34,8 +33,7 @@ class ConversationSummaryModel(BaseModel):
     question_history: List[QuestionStatusModel] = Field(alias="questionHistory")
     conversation_history: List[ConversationMessageModel] = Field(alias="conversationHistory")
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class ConversationCreateRequest(BaseModel):
@@ -43,8 +41,7 @@ class ConversationCreateRequest(BaseModel):
     model: Optional[str] = None
     api_key: Optional[str] = Field(default=None, alias="apiKey")
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class ConversationCreateResponse(BaseModel):
@@ -54,8 +51,7 @@ class ConversationCreateResponse(BaseModel):
     available_models: List[str] = Field(alias="availableModels")
     summary: ConversationSummaryModel
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class ConversationIdResponse(BaseModel):
@@ -67,8 +63,7 @@ class AskQuestionRequest(BaseModel):
     selected_files: Optional[List[str]] = Field(default=None, alias="selectedFiles")
     persistent: bool = False
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class AskQuestionResponse(BaseModel):
@@ -78,8 +73,7 @@ class AskQuestionResponse(BaseModel):
     question_index: int = Field(alias="questionIndex")
     summary: ConversationSummaryModel
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class SystemPromptResponse(BaseModel):
@@ -88,8 +82,7 @@ class SystemPromptResponse(BaseModel):
     tokens_used: int = Field(alias="tokensUsed")
     summary: ConversationSummaryModel
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class SetDirectoryRequest(BaseModel):
@@ -107,8 +100,7 @@ class UpdateFilesRequest(BaseModel):
     selected_files: List[str] = Field(alias="selectedFiles")
     persistent: bool = False
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class ExportConversationResponse(BaseModel):
@@ -125,8 +117,7 @@ class ImportConversationRequest(BaseModel):
     persistent_files: List[str] = Field(default_factory=list, alias="persistentFiles")
     selected_directory: Optional[str] = Field(default=None, alias="selectedDirectory")
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class SettingsUpdateRequest(BaseModel):
@@ -178,12 +169,10 @@ class UpdateProviderRequest(BaseModel):
     api_key: Optional[str] = Field(default=None, alias="apiKey")
     models: Optional[List[str]] = None
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class UpdateApiKeyRequest(BaseModel):
     api_key: str = Field(alias="apiKey")
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)

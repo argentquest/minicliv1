@@ -10,10 +10,16 @@ This combines the best of both worlds:
 """
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox
-from typing import List, Callable, Optional, Dict, Any
+from typing import List, Callable, Optional, Dict, Any, Tuple
 import re
 import time
 from datetime import datetime
+import keyword
+
+CODE_FRAGMENT_PATTERN = re.compile(
+    r"```(?P<lang>[^\n`]*)\n?(?P<code_bt>[\s\S]*?)```|'''(?P<code_sq>[\s\S]*?)'''",
+    re.MULTILINE,
+)
 
 from theme import theme_manager
 from simple_modern_ui import SimpleModernButton, SimpleModernLabel
@@ -291,33 +297,70 @@ class EnhancedChatArea:
         """Create action buttons for a message."""
         actions_frame = tk.Frame(parent, bg=parent.cget('bg'))
         actions_frame.pack(side='right', padx=(5, 0))
-        
+
+        code_fragments = self._find_code_fragments(chat_msg.content)
+
         # Expand/Collapse button
-        expand_btn = tk.Button(actions_frame, text="⬆️" if not chat_msg.is_expanded else "⬇️",
-                              bg=parent.cget('bg'), fg='white' if is_user else self.theme.colors['text_primary'],
-                              font=('Arial', 10), relief='flat', bd=0, cursor='hand2',
-                              command=lambda: self._toggle_message_expand(chat_msg))
+        expand_btn = tk.Button(
+            actions_frame,
+            text="??" if not chat_msg.is_expanded else "??",
+            bg=parent.cget('bg'),
+            fg='white' if is_user else self.theme.colors['text_primary'],
+            font=('Arial', 10),
+            relief='flat',
+            bd=0,
+            cursor='hand2',
+            command=lambda: self._toggle_message_expand(chat_msg),
+        )
         expand_btn.pack(side='left', padx=1)
-        
+
         # Copy button
-        copy_btn = tk.Button(actions_frame, text="📋",
-                            bg=parent.cget('bg'), fg='white' if is_user else self.theme.colors['text_primary'],
-                            font=('Arial', 10), relief='flat', bd=0, cursor='hand2',
-                            command=lambda: self._copy_message(chat_msg))
+        copy_btn = tk.Button(
+            actions_frame,
+            text="??",
+            bg=parent.cget('bg'),
+            fg='white' if is_user else self.theme.colors['text_primary'],
+            font=('Arial', 10),
+            relief='flat',
+            bd=0,
+            cursor='hand2',
+            command=lambda: self._copy_message(chat_msg),
+        )
         copy_btn.pack(side='left', padx=1)
-        
+
+        if code_fragments:
+            extract_btn = tk.Button(
+                actions_frame,
+                text="Extract",
+                bg=parent.cget('bg'),
+                fg='white' if is_user else self.theme.colors['text_primary'],
+                font=('Arial', 10),
+                relief='flat',
+                bd=0,
+                cursor='hand2',
+                command=lambda: self._open_extract_dialog(chat_msg),
+            )
+            extract_btn.pack(side='left', padx=1)
+
         # Regenerate button (only for assistant messages)
         if not is_user and chat_msg.role == 'assistant':
-            regen_btn = tk.Button(actions_frame, text="🔄",
-                                 bg=parent.cget('bg'), fg=self.theme.colors['text_primary'],
-                                 font=('Arial', 10), relief='flat', bd=0, cursor='hand2',
-                                 command=lambda: self._regenerate_response(chat_msg))
+            regen_btn = tk.Button(
+                actions_frame,
+                text="??",
+                bg=parent.cget('bg'),
+                fg=self.theme.colors['text_primary'],
+                font=('Arial', 10),
+                relief='flat',
+                bd=0,
+                cursor='hand2',
+                command=lambda: self._regenerate_response(chat_msg),
+            )
             regen_btn.pack(side='left', padx=1)
-            
+
         # Store button references
         chat_msg.widget_refs['expand_btn'] = expand_btn
         chat_msg.widget_refs['actions_frame'] = actions_frame
-        
+
     def _create_message_content(self, parent, chat_msg: ChatMessage, fg_color: str, bg_color: str):
         """Create the message content area with syntax highlighting."""
         # Content frame
@@ -331,7 +374,7 @@ class EnhancedChatArea:
         text_widget = tk.Text(content_frame, wrap=tk.WORD, 
                              height=initial_height,
                              bg=bg_color, fg=fg_color,
-                             font=('Segoe UI', 10),
+                             font=('Consolas', 11),
                              relief='flat', bd=0,
                              state='disabled',
                              cursor='arrow')
@@ -346,45 +389,351 @@ class EnhancedChatArea:
         chat_msg.widget_refs['content_widget'] = text_widget
         chat_msg.widget_refs['content_frame'] = content_frame
         
-    def _add_rich_content(self, text_widget, content: str, fg_color: str, bg_color: str):
-        """Add content with basic syntax highlighting."""
-        text_widget.delete('1.0', tk.END)
-        
-        # Configure text tags for syntax highlighting
-        text_widget.tag_configure('code', font=('Consolas', 9), 
-                                 background=self.theme.colors['bg_tertiary'])
-        text_widget.tag_configure('bold', font=('Segoe UI', 10, 'bold'))
-        text_widget.tag_configure('italic', font=('Segoe UI', 10, 'italic'))
-        
-        # Simple markdown-like parsing
-        lines = content.split('\n')
-        for i, line in enumerate(lines):
-            if i > 0:
-                text_widget.insert(tk.END, '\n')
-                
-            # Code blocks
-            if line.strip().startswith('```'):
-                text_widget.insert(tk.END, line, 'code')
-            # Bold text
-            elif '**' in line:
-                parts = line.split('**')
-                for j, part in enumerate(parts):
-                    if j % 2 == 1:  # Odd indices are bold
-                        text_widget.insert(tk.END, part, 'bold')
-                    else:
-                        text_widget.insert(tk.END, part)
-            # Italic text
-            elif '*' in line and not line.strip().startswith('*'):
-                parts = line.split('*')
-                for j, part in enumerate(parts):
-                    if j % 2 == 1:  # Odd indices are italic
-                        text_widget.insert(tk.END, part, 'italic')
-                    else:
-                        text_widget.insert(tk.END, part)
+
+    def _find_code_fragments(self, content: str) -> List[Dict[str, str]]:
+        '''Return ordered code fragments extracted from the message text.'''
+        fragments: List[Dict[str, str]] = []
+        if not content:
+            return fragments
+
+        for match in CODE_FRAGMENT_PATTERN.finditer(content):
+            code_value = match.group('code_bt') if match.group('code_bt') is not None else match.group('code_sq')
+            if not code_value:
+                continue
+            language = (match.group('lang') or '').strip()
+            fragments.append(
+                {
+                    'language': language,
+                    'code': code_value.strip(),
+                }
+            )
+
+        return fragments
+
+    def _open_extract_dialog(self, chat_msg: ChatMessage):
+        '''Show extracted code fragments in a popup for copying.'''
+        fragments = self._find_code_fragments(chat_msg.content)
+        if not fragments:
+            messagebox.showinfo("Extract Code", "No code fragments found in this message.")
+            return
+
+        dialog = tk.Toplevel(self.parent)
+        dialog.title("Extracted Code Fragments")
+        dialog.configure(bg=self.theme.colors['bg_primary'])
+        dialog.geometry("720x420")
+        dialog.transient(self.parent)
+        dialog.grab_set()
+
+        def close_dialog():
+            try:
+                dialog.grab_release()
+            except Exception:
+                pass
+            dialog.destroy()
+
+        dialog.protocol("WM_DELETE_WINDOW", close_dialog)
+
+        content_frame = tk.Frame(dialog, bg=self.theme.colors['bg_primary'])
+        content_frame.pack(fill='both', expand=True, padx=12, pady=12)
+
+        list_frame = tk.Frame(content_frame, bg=self.theme.colors['bg_primary'])
+        list_frame.pack(side='left', fill='y')
+
+        preview_items = []
+        for index, fragment in enumerate(fragments, start=1):
+            language = fragment['language'] or 'Code'
+            snippet = fragment['code'].strip()
+            first_line = snippet.splitlines()[0] if snippet else '(empty fragment)'
+            preview_items.append(f"{index}. {language} - {first_line[:60]}")
+
+        list_var = tk.StringVar(value=preview_items)
+        select_bg = self.theme.colors.get('accent', self.theme.colors.get('bg_accent', '#4d4d4d'))
+        listbox = tk.Listbox(
+            list_frame,
+            listvariable=list_var,
+            height=min(len(preview_items), 12),
+            bg=self.theme.colors['bg_secondary'],
+            fg=self.theme.colors['text_primary'],
+            activestyle='none',
+            exportselection=False,
+            selectbackground=select_bg,
+        )
+        listbox.pack(side='left', fill='y')
+        list_scroll = ttk.Scrollbar(list_frame, orient='vertical', command=listbox.yview)
+        list_scroll.pack(side='right', fill='y')
+        listbox.config(yscrollcommand=list_scroll.set)
+
+        text_frame = tk.Frame(content_frame, bg=self.theme.colors['bg_primary'])
+        text_frame.pack(side='left', fill='both', expand=True, padx=(12, 0))
+
+        info_label = tk.Label(
+            text_frame,
+            text='Select a fragment to preview it.',
+            anchor='w',
+            bg=self.theme.colors['bg_primary'],
+            fg=self.theme.colors['text_secondary'],
+            font=('Segoe UI', 9, 'italic'),
+        )
+        info_label.pack(fill='x', pady=(0, 6))
+
+        code_text = tk.Text(
+            text_frame,
+            wrap='none',
+            font=('Consolas', 10),
+            bg=self.theme.colors['bg_secondary'],
+            fg=self.theme.colors['text_primary'],
+            state='disabled',
+        )
+        code_text.pack(fill='both', expand=True)
+        text_scroll = ttk.Scrollbar(text_frame, orient='vertical', command=code_text.yview)
+        text_scroll.pack(side='right', fill='y')
+        code_text.config(yscrollcommand=text_scroll.set)
+
+        button_frame = tk.Frame(dialog, bg=self.theme.colors['bg_primary'])
+        button_frame.pack(fill='x', padx=12, pady=(0, 12))
+
+        selected_index = {'value': None}
+
+        def show_fragment(event=None):
+            selection = listbox.curselection()
+            if not selection:
+                selected_index['value'] = None
+                code_text.config(state='normal')
+                code_text.delete('1.0', tk.END)
+                code_text.config(state='disabled')
+                info_label.config(text='Select a fragment to preview it.')
+                copy_btn.config(state='disabled')
+                return
+
+            idx = selection[0]
+            selected_index['value'] = idx
+            fragment = fragments[idx]
+            language = fragment['language'] or 'Plain text'
+            info_label.config(text=f"Language: {language}")
+            code_text.config(state='normal')
+            code_text.delete('1.0', tk.END)
+            code_text.insert('1.0', fragment['code'])
+            code_text.config(state='disabled')
+            copy_btn.config(state='normal')
+
+        def copy_selected():
+            idx = selected_index['value']
+            if idx is None:
+                return
+            try:
+                self.parent.clipboard_clear()
+                self.parent.clipboard_append(fragments[idx]['code'])
+            except Exception as exc:
+                messagebox.showerror('Copy Failed', f'Could not copy code: {exc}')
             else:
-                text_widget.insert(tk.END, line)
-                
-    def _toggle_message_expand(self, chat_msg: ChatMessage):
+                info_label.config(text='Code copied to clipboard.')
+
+        copy_btn = tk.Button(
+            button_frame,
+            text='Copy to Clipboard',
+            state='disabled',
+            bg=self.theme.colors['bg_secondary'],
+            fg=self.theme.colors['text_primary'],
+            relief='flat',
+            bd=0,
+            cursor='hand2',
+            command=copy_selected,
+        )
+        copy_btn.pack(side='left', padx=(0, 8))
+
+        close_btn = tk.Button(
+            button_frame,
+            text='Close',
+            bg=self.theme.colors['bg_secondary'],
+            fg=self.theme.colors['text_primary'],
+            relief='flat',
+            bd=0,
+            cursor='hand2',
+            command=close_dialog,
+        )
+        close_btn.pack(side='left')
+
+        listbox.bind('<<ListboxSelect>>', show_fragment)
+        if preview_items:
+            listbox.selection_set(0)
+            show_fragment()
+            listbox.focus_set()
+        dialog.focus_force()
+
+    def _add_rich_content(self, text_widget, content: str, fg_color: str, bg_color: str):
+        """Add content with markdown-aware styling."""
+        text_widget.delete('1.0', tk.END)
+        self._ensure_rich_text_tags(text_widget)
+
+        if not content:
+            return
+
+        lines = content.splitlines()
+        in_code_block = False
+        code_language = ''
+        code_lines: List[str] = []
+
+        for index, line in enumerate(lines):
+            stripped = line.rstrip('
+')
+            is_last_line = index == len(lines) - 1
+
+            if stripped.strip().startswith('```'):
+                fence = stripped.strip()
+                if in_code_block:
+                    self._insert_code_block(text_widget, code_lines, code_language)
+                    code_lines = []
+                    code_language = ''
+                    in_code_block = False
+                    if not is_last_line:
+                        text_widget.insert(tk.END, '
+')
+                else:
+                    code_language = fence[3:].strip().lower()
+                    in_code_block = True
+                continue
+
+            if in_code_block:
+                code_lines.append(stripped)
+            else:
+                self._insert_markdown_line(text_widget, stripped)
+                if not is_last_line:
+                    text_widget.insert(tk.END, '
+')
+
+        if in_code_block:
+            self._insert_code_block(text_widget, code_lines, code_language)
+
+    def _ensure_rich_text_tags(self, text_widget: tk.Text):
+        """Configure text tags used for rich formatting once per widget."""
+        if getattr(text_widget, '_rich_tags_configured', False):
+            return
+
+        colors = self.theme.colors
+        accent = colors.get('accent', '#5b8def')
+        text_primary = colors.get('text_primary', '#f5f5f5')
+        text_secondary = colors.get('text_secondary', '#b0b0b0')
+        code_bg = colors.get('bg_tertiary', '#1f1f1f')
+        inline_bg = colors.get('bg_secondary', '#2a2a2a')
+        blockquote_bg = colors.get('bg_secondary', '#2e2e2e')
+
+        text_widget.tag_configure('heading1', font=('Consolas', 16, 'bold'), foreground=text_primary, spacing3=6)
+        text_widget.tag_configure('heading2', font=('Consolas', 14, 'bold'), foreground=text_primary, spacing3=4)
+        text_widget.tag_configure('heading3', font=('Consolas', 12, 'bold'), foreground=text_primary, spacing3=4)
+        text_widget.tag_configure('paragraph', foreground=text_primary, spacing3=4)
+        text_widget.tag_configure('inline_code', font=('Consolas', 11), background=inline_bg, foreground=accent, relief='flat')
+        text_widget.tag_configure('code', font=('Consolas', 11), background=code_bg, foreground=text_primary, lmargin1=12, lmargin2=12, spacing3=8, spacing1=4)
+        text_widget.tag_configure('code_keyword', foreground='#ffd479')
+        text_widget.tag_configure('code_string', foreground='#9cdcfe')
+        text_widget.tag_configure('code_comment', foreground='#7c7c7c')
+        text_widget.tag_configure('blockquote', foreground=text_secondary, background=blockquote_bg, lmargin1=12, lmargin2=16, spacing3=6)
+        text_widget.tag_configure('list_bullet', foreground=accent, font=('Consolas', 11, 'bold'))
+        text_widget.tag_configure('bold', font=('Consolas', 11, 'bold'))
+        text_widget.tag_configure('italic', font=('Consolas', 11, 'italic'))
+        text_widget.tag_configure('link', foreground=accent, underline=True)
+
+        text_widget._rich_tags_configured = True
+
+    def _insert_markdown_line(self, text_widget: tk.Text, line: str):
+        """Render a single non-code markdown line."""
+        stripped = line.strip('
+')
+        if not stripped:
+            text_widget.insert(tk.END, '
+')
+            return
+
+        if stripped.startswith('>'):
+            content = stripped.lstrip('> ').strip()
+            start_index = text_widget.index(tk.END)
+            self._insert_inline_text(text_widget, content, ('blockquote',))
+            end_index = text_widget.index(tk.END)
+            text_widget.tag_add('blockquote', start_index, end_index)
+            return
+
+        if stripped.startswith('#'):
+            level = len(stripped) - len(stripped.lstrip('#'))
+            level = min(level, 3)
+            content = stripped[level:].strip() or stripped
+            tag = f'heading{level}'
+            self._insert_inline_text(text_widget, content, (tag,))
+            return
+
+        bullet_match = re.match(r'^(?:[-*]|\d+\.)\s+(.*)', stripped)
+        if bullet_match:
+            value = bullet_match.group(1)
+            text_widget.insert(tk.END, '• ', ('list_bullet',))
+            self._insert_inline_text(text_widget, value, ('paragraph',))
+            return
+
+        self._insert_inline_text(text_widget, stripped, ('paragraph',))
+
+    def _insert_inline_text(self, text_widget: tk.Text, text: str, base_tags: Tuple[str, ...] = ()): 
+        pattern = re.compile(r'(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\([^\)]+\))')
+        position = 0
+        for match in pattern.finditer(text):
+            if match.start() > position:
+                segment = text[position:match.start()]
+                text_widget.insert(tk.END, segment, base_tags)
+
+            token = match.group(0)
+            if token.startswith('`'):
+                text_widget.insert(tk.END, token[1:-1], base_tags + ('inline_code',))
+            elif token.startswith('**'):
+                text_widget.insert(tk.END, token[2:-2], base_tags + ('bold',))
+            elif token.startswith('*'):
+                text_widget.insert(tk.END, token[1:-1], base_tags + ('italic',))
+            else:
+                link_match = re.match(r'^\[([^\]]+)\]\(([^\)]+)\)$', token)
+                if link_match:
+                    label = link_match.group(1)
+                    text_widget.insert(tk.END, label, base_tags + ('link',))
+            position = match.end()
+
+        if position < len(text):
+            text_widget.insert(tk.END, text[position:], base_tags)
+
+    def _insert_code_block(self, text_widget: tk.Text, code_lines: List[str], language: str):
+        if not code_lines:
+            return
+
+        code_text = '
+'.join(code_lines).rstrip('
+') + '
+'
+        start_index = text_widget.index(tk.END)
+        text_widget.insert(tk.END, code_text)
+        end_index = text_widget.index(tk.END)
+        text_widget.tag_add('code', start_index, end_index)
+
+        if language in {'python', 'py'}:
+            self._highlight_python_code(text_widget, start_index, end_index)
+
+    def _highlight_python_code(self, text_widget: tk.Text, start: str, end: str):
+        import io
+        import tokenize
+
+        code = text_widget.get(start, end)
+        try:
+            tokens = list(tokenize.generate_tokens(io.StringIO(code).readline))
+        except tokenize.TokenError:
+            return
+
+        base_line = int(start.split('.')[0])
+
+        for token_type, token_string, (srow, scol), (erow, ecol), _ in tokens:
+            line_start = base_line + srow - 1
+            line_end = base_line + erow - 1
+            start_index = f"{line_start}.{scol}"
+            end_index = f"{line_end}.{ecol}"
+
+            if token_type == tokenize.NAME and keyword.iskeyword(token_string):
+                text_widget.tag_add('code_keyword', start_index, end_index)
+            elif token_type == tokenize.STRING:
+                text_widget.tag_add('code_string', start_index, end_index)
+            elif token_type == tokenize.COMMENT:
+                text_widget.tag_add('code_comment', start_index, end_index)
+def _toggle_message_expand(self, chat_msg: ChatMessage):
         """Toggle the expanded state of a message."""
         chat_msg.is_expanded = not chat_msg.is_expanded
         

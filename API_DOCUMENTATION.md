@@ -2,396 +2,722 @@
 
 ## Overview
 
-This document provides comprehensive API documentation for the Code Chat with AI application. The application is built using a modular architecture with clear separation of concerns, making it easy to extend and maintain.
+This document provides comprehensive API documentation for the Code Chat with AI FastAPI backend. The application exposes a REST API that serves the React frontend and provides programmatic access to AI-powered code analysis capabilities.
 
-## Core Architecture
-
-### Architecture Overview
-
-```mermaid
-classDiagram
-    class BaseAIProvider {
-        +process_question()
-        +process_question_async()
-        +validate_api_key()
-        +get_provider_info()
-    }
-
-    class OpenRouterProvider {
-        +_get_provider_config()
-        +_prepare_headers()
-        +_extract_response_content()
-    }
-
-    class TachyonProvider {
-        +_get_provider_config()
-        +_prepare_headers()
-        +_extract_response_content()
-    }
-
-    class AIProviderFactory {
-        +create_provider()
-        +register_provider()
-    }
-
-    class AppState {
-        +set_persistent_files()
-        +get_selected_files()
-    }
-
-    class CodebaseScanner {
-        +scan_directory()
-        +get_file_contents()
-    }
-
-    class LazyCodebaseScanner {
-        +scan_directory()
-        +get_file_contents()
-    }
-
-    class UIController {
-        +handle_user_input()
-        +update_ui()
-    }
-
-    BaseAIProvider <|-- OpenRouterProvider
-    BaseAIProvider <|-- TachyonProvider
-    AIProviderFactory --> BaseAIProvider
-    AppState --> CodebaseScanner
-    AppState --> LazyCodebaseScanner
-    UIController --> AppState
-    UIController --> AIProviderFactory
+## Base URL
+```
+http://localhost:8000
 ```
 
-### AI Processing Flow
+## Authentication
+API keys are managed through environment variables and are not required in API requests. Authentication is handled server-side using the configured API keys.
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant UI as UIController
-    participant AS as AppState
-    participant CS as CodebaseScanner
-    participant AP as AIProvider
-    participant AI as AI Service
+## API Endpoints
 
-    U->>UI: Submit question
-    UI->>AS: Get selected files
-    AS->>CS: Scan codebase
-    CS->>AS: Return file contents
-    UI->>AP: Process question
-    AP->>AI: Send API request
-    AI->>AP: Return response
-    AP->>UI: Return analysis
-    UI->>U: Display results
+### Health & Status
+
+#### GET /health
+Returns server health status.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2023-12-01T14:30:22.123456",
+  "version": "1.0.0"
+}
 ```
 
-### Provider Pattern
+### AI Models & Providers
 
-The application uses a provider pattern for AI integration, allowing multiple AI services to be used through a consistent interface.
+#### GET /meta/providers
+Returns available AI providers.
 
-## BaseAIProvider
-
-**Location**: [`base_ai.py:58`](base_ai.py:58)
-
-Abstract base class defining the interface for all AI providers.
-
-### Constructor
-
-```python
-BaseAIProvider(api_key: str = "")
+**Response:**
+```json
+{
+  "providers": ["openrouter", "tachyon"],
+  "default": "openrouter"
+}
 ```
 
-**Parameters:**
-- `api_key` (str): API key for the AI provider
-
-### Abstract Methods
-
-#### `_get_provider_config() -> AIProviderConfig`
-Returns provider-specific configuration.
-
-#### `_prepare_headers() -> Dict[str, str]`
-Prepares HTTP headers for API requests.
-
-#### `_prepare_request_data(messages: List[Dict], model: str) -> Dict[str, Any]`
-Prepares request data for the AI API.
-
-#### `_extract_response_content(response_data: Dict[str, Any]) -> str`
-Extracts the AI response content from the API response.
-
-#### `_extract_token_usage(response_data: Dict[str, Any]) -> Tuple[int, int, int]`
-Extracts token usage information (prompt_tokens, completion_tokens, total_tokens).
-
-#### `_handle_api_error(status_code: int, response_text: str) -> str`
-Handles provider-specific API errors.
-
-### Public Methods
-
-#### `get_provider_name() -> str`
-Returns the provider name.
-
-#### `set_api_key(api_key: str)`
-Sets the API key for the provider.
-
-#### `validate_api_key() -> bool`
-Validates that the API key is properly configured.
-
-#### `get_provider_info() -> Dict[str, Any]`
-Returns information about the provider.
-
-#### `get_secure_debug_info() -> Dict[str, Any]`
-Returns debug information with sensitive data masked.
-
-#### `process_question(question: str, conversation_history: List[Dict[str, str]], codebase_content: str, model: str, update_callback: Optional[Callable[[str, str], None]] = None) -> str`
-
-Processes a question using the AI API.
+#### GET /meta/models
+Returns available AI models for a provider.
 
 **Parameters:**
-- `question` (str): User's question
-- `conversation_history` (List[Dict[str, str]]): Previous conversation messages
-- `codebase_content` (str): Combined codebase content
-- `model` (str): AI model to use
-- `update_callback` (Optional[Callable]): Callback for UI updates
+- `provider` (optional): Filter models by provider
 
-**Returns:**
-- AI response content (str)
-
-**Raises:**
-- Exception: If API call fails or API key is invalid
-
-#### `process_question_async(question: str, conversation_history: List[Dict[str, str]], codebase_content: str, model: str, success_callback: Optional[Callable[[str], None]] = None, error_callback: Optional[Callable[[str], None]] = None, ui_update_callback: Optional[Callable[[str, str], None]] = None)`
-
-Processes a question asynchronously with callbacks.
-
-**Parameters:**
-- `question` (str): User's question
-- `conversation_history` (List[Dict[str, str]]): Previous conversation messages
-- `codebase_content` (str): Combined codebase content
-- `model` (str): AI model to use
-- `success_callback` (Optional[Callable]): Called with AI response on success
-- `error_callback` (Optional[Callable]): Called with error message on failure
-- `ui_update_callback` (Optional[Callable]): Called for UI updates
-
-## AIProviderConfig
-
-**Location**: [`base_ai.py:46`](base_ai.py:46)
-
-Configuration class for AI providers.
-
-### Constructor
-
-```python
-AIProviderConfig(name: str, api_url: str, supports_tokens: bool = True)
+**Response:**
+```json
+{
+  "models": ["openai/gpt-4", "openai/gpt-3.5-turbo", "anthropic/claude-3-sonnet"],
+  "default": "openai/gpt-4",
+  "provider": "openrouter"
+}
 ```
 
-**Parameters:**
-- `name` (str): Provider name
-- `api_url` (str): API endpoint URL
-- `supports_tokens` (bool): Whether the provider supports token counting
-
-### Attributes
-
-- `name` (str): Provider name
-- `api_url` (str): API endpoint URL
-- `supports_tokens` (bool): Token support flag
-- `headers` (Dict[str, str]): Default HTTP headers
-- `auth_header` (str): Authentication header name
-- `auth_format` (str): Authentication format string
-
-## File Scanning System
-
-### CodebaseScanner
-
-**Location**: [`file_scanner.py:9`](file_scanner.py:9)
-
-Standard codebase file scanner for smaller projects.
-
-### LazyCodebaseScanner
-
-**Location**: [`lazy_file_scanner.py:35`](lazy_file_scanner.py:35)
-
-Lazy loading file scanner for large codebases with performance optimization.
-
-## State Management
-
-### AppState
-
-**Location**: [`models.py:157`](models.py:157)
-
-Application state management class.
-
-### AppConfig
-
-**Location**: [`models.py`](models.py)
-
-Application configuration class.
-
-## Security Utilities
-
-### SecurityUtils
-
-**Location**: [`security_utils.py:27`](security_utils.py:27)
-
-Security utilities for API key management and data sanitization.
-
-### Key Methods
-
-#### `mask_api_key(api_key: str) -> str`
-Masks sensitive parts of API keys for safe logging.
-
-#### `validate_api_key_format(api_key: str, provider: str) -> bool`
-Validates API key format for specific providers.
-
-#### `sanitize_log_message(message: str) -> str`
-Sanitizes log messages to remove sensitive information.
-
-## Environment Management
-
-### EnvManager
-
-**Location**: [`env_manager.py:253`](env_manager.py:253)
-
-Environment variable management with safe file operations.
-
-### Key Methods
-
-#### `update_single_var(key: str, value: str)`
-Safely updates a single environment variable in the .env file.
-
-## Pattern Matching
-
-### PatternMatcher
-
-**Location**: [`pattern_matcher.py:223`](pattern_matcher.py:223)
-
-Advanced pattern matching for tool command detection.
-
-### Key Methods
-
-#### `is_tool_command(question: str, tool_vars: Dict[str, str], threshold: float = 0.5) -> bool`
-Determines if a question contains tool commands that need codebase context.
-
-## File Operations
-
-### File Locking
-
-**Location**: [`file_lock.py`](file_lock.py)
-
-Safe JSON file operations with locking mechanisms.
-
-### Key Functions
-
-#### `safe_json_save(data: Any, filename: str, timeout: float = 10.0, backup: bool = True) -> bool`
-Safely saves data to JSON file with file locking and backup.
-
-#### `safe_json_load(filename: str, timeout: float = 10.0, default: Any = None) -> Any`
-Safely loads data from JSON file with file locking.
-
-## Logging System
-
-### Logger
-
-**Location**: [`logger.py:305`](logger.py:305)
-
-Structured logging system with context support.
-
-### Key Decorators
-
-#### `@with_context`
-Decorator that adds context information to log messages.
-
-### Key Methods
-
-#### `logger.set_context(component: str, operation: str)`
-Sets logging context for structured logging.
-
-## System Message Management
-
-### SystemMessageManager
-
-**Location**: [`system_message_manager.py`](system_message_manager.py)
-
-Manages expert system messages for different analysis types.
-
-### Key Methods
-
-#### `get_system_message(codebase_content: str) -> str`
-Retrieves the appropriate system message with codebase content.
-
-#### `get_system_message_files_info() -> List[Dict]`
-Returns information about available system message files.
-
-## UI Components
-
-### UIController
-
-**Location**: [`ui_controller.py`](ui_controller.py)
-
-Main UI controller managing interface components and user interactions.
-
-### SimpleModernUI
-
-**Location**: [`simple_modern_ui.py`](simple_modern_ui.py)
-
-Modern UI components with theme support.
-
-## CLI Interfaces
-
-### CLIInterface
-
-**Location**: [`cli_interface.py`](cli_interface.py)
-
-Standard command-line interface implementation.
-
-### Rich CLI
-
-**Location**: [`cli_rich.py`](cli_rich.py)
-
-Enhanced terminal interface with rich formatting and progress bars.
-
-## Testing Framework
-
-### Test Configuration
-
-**Location**: [`tests/conftest.py:1`](tests/conftest.py:1)
-
-Test configuration and fixtures for consistent testing.
-
-### Key Fixtures
-
-#### `mock_requests_post`
-Mock fixture for AI API responses.
+#### GET /meta/ui-defaults
+Returns UI configuration defaults.
+
+**Response:**
+```json
+{
+  "provider": "openrouter",
+  "models": ["openai/gpt-4", "openai/gpt-3.5-turbo"],
+  "defaultModel": "openai/gpt-4",
+  "toolCommands": [{"key": "TOOL_LINT", "value": "pylint"}],
+  "systemMessages": {
+    "current": "systemmessage_default.txt",
+    "messages": [
+      {
+        "filename": "systemmessage_default.txt",
+        "display_name": "Default",
+        "preview": "General purpose instructions",
+        "length": 150
+      }
+    ]
+  },
+  "apiKey": "sk-..."
+}
+```
+
+### Conversation Management
+
+#### POST /conversations
+Creates a new conversation session.
+
+**Request Body:**
+```json
+{
+  "provider": "openrouter",
+  "model": "openai/gpt-4",
+  "apiKey": "sk-your-api-key"
+}
+```
+
+**Response:**
+```json
+{
+  "conversation_id": "conv_123456",
+  "provider": "openrouter",
+  "model": "openai/gpt-4",
+  "available_models": ["openai/gpt-4", "openai/gpt-3.5-turbo"],
+  "summary": {
+    "conversation_id": "conv_123456",
+    "provider": "openrouter",
+    "selected_model": "openai/gpt-4",
+    "selected_directory": null,
+    "selected_files": [],
+    "persistent_files": [],
+    "question_history": [],
+    "conversation_history": []
+  }
+}
+```
+
+#### GET /conversations/{conversation_id}
+Retrieves conversation summary.
+
+**Response:**
+```json
+{
+  "conversation_id": "conv_123456",
+  "provider": "openrouter",
+  "selected_model": "openai/gpt-4",
+  "selected_directory": "/path/to/project",
+  "selected_files": ["main.py", "utils.py"],
+  "persistent_files": ["main.py"],
+  "question_history": [
+    {
+      "question": "What does this code do?",
+      "status": "completed",
+      "response": "This code implements...",
+      "timestamp": "2023-12-01T14:30:22.123456",
+      "tokens_used": 150,
+      "processing_time": 2.34,
+      "model_used": "openai/gpt-4"
+    }
+  ],
+  "conversation_history": [
+    {"role": "user", "content": "What does this code do?"},
+    {"role": "assistant", "content": "This code implements..."}
+  ]
+}
+```
+
+#### POST /conversations/{conversation_id}/clear
+Clears conversation history.
+
+**Response:**
+```json
+{
+  "conversation_id": "conv_123456",
+  "provider": "openrouter",
+  "selected_model": "openai/gpt-4",
+  "selected_directory": "/path/to/project",
+  "selected_files": ["main.py"],
+  "persistent_files": [],
+  "question_history": [],
+  "conversation_history": []
+}
+```
+
+#### DELETE /conversations/{conversation_id}
+Deletes a conversation session.
+
+**Response:**
+```json
+{
+  "conversation_id": "conv_123456"
+}
+```
+
+### Question & Answer
+
+#### POST /conversations/{conversation_id}/question
+Asks a question about the codebase.
+
+**Request Body:**
+```json
+{
+  "question": "What does this function do?",
+  "selectedFiles": ["main.py", "utils.py"],
+  "persistent": false
+}
+```
+
+**Response:**
+```json
+{
+  "response": "This function implements a data processing pipeline...",
+  "processing_time": 2.34,
+  "tokens_used": 150,
+  "question_index": 1,
+  "summary": {
+    "conversation_id": "conv_123456",
+    "provider": "openrouter",
+    "selected_model": "openai/gpt-4",
+    "selected_directory": "/path/to/project",
+    "selected_files": ["main.py", "utils.py"],
+    "persistent_files": ["main.py"],
+    "question_history": [
+      {
+        "question": "What does this function do?",
+        "status": "completed",
+        "response": "This function implements...",
+        "timestamp": "2023-12-01T14:30:22.123456",
+        "tokens_used": 150,
+        "processing_time": 2.34,
+        "model_used": "openai/gpt-4"
+      }
+    ],
+    "conversation_history": [
+      {"role": "user", "content": "What does this function do?"},
+      {"role": "assistant", "content": "This function implements..."}
+    ]
+  }
+}
+```
+
+#### POST /conversations/{conversation_id}/system-prompt
+Executes the system prompt for initial analysis.
+
+**Response:**
+```json
+{
+  "response": "I've analyzed your codebase and found...",
+  "processing_time": 3.45,
+  "tokens_used": 200,
+  "summary": {
+    "conversation_id": "conv_123456",
+    // ... conversation summary
+  }
+}
+```
+
+### File Management
+
+#### POST /conversations/{conversation_id}/directory
+Sets the working directory and scans for files.
+
+**Request Body:**
+```json
+{
+  "path": "/path/to/project"
+}
+```
+
+**Response:**
+```json
+{
+  "directory": "/path/to/project",
+  "files": [
+    {
+      "name": "main.py",
+      "path": "/path/to/project/main.py",
+      "size": 1024,
+      "modified": "2023-12-01T14:30:22.123456",
+      "type": "file"
+    }
+  ],
+  "message": "Successfully scanned directory",
+  "summary": {
+    "conversation_id": "conv_123456",
+    // ... updated conversation summary
+  }
+}
+```
+
+#### POST /conversations/{conversation_id}/files
+Updates selected files for analysis.
+
+**Request Body:**
+```json
+{
+  "selected_files": ["main.py", "utils.py"],
+  "persistent": true
+}
+```
+
+**Response:**
+```json
+{
+  "conversation_id": "conv_123456",
+  "provider": "openrouter",
+  "selected_model": "openai/gpt-4",
+  "selected_directory": "/path/to/project",
+  "selected_files": ["main.py", "utils.py"],
+  "persistent_files": ["main.py", "utils.py"],
+  "question_history": [],
+  "conversation_history": []
+}
+```
+
+#### POST /files/scan
+Scans a directory for files (utility endpoint).
+
+**Request Body:**
+```json
+{
+  "path": "/path/to/project"
+}
+```
+
+**Response:**
+```json
+{
+  "directory": "/path/to/project",
+  "files": [
+    {
+      "name": "main.py",
+      "path": "/path/to/project/main.py",
+      "size": 1024,
+      "modified": "2023-12-01T14:30:22.123456",
+      "type": "file"
+    }
+  ],
+  "tree": {
+    "name": "project",
+    "type": "directory",
+    "children": [
+      {
+        "name": "main.py",
+        "type": "file",
+        "size": 1024
+      }
+    ]
+  }
+}
+```
+
+#### POST /files/content
+Retrieves content of specified files.
+
+**Request Body:**
+```json
+{
+  "files": ["/path/to/project/main.py", "/path/to/project/utils.py"]
+}
+```
+
+**Response:**
+```json
+{
+  "combined_content": "# main.py\n\ndef main():\n    print('Hello World')\n\n# utils.py\n\ndef helper():\n    return 'helper function'\n"
+}
+```
+
+### Model & Settings Management
+
+#### PUT /conversations/{conversation_id}/model
+Updates the AI model for a conversation.
+
+**Request Body:**
+```json
+{
+  "model": "openai/gpt-4"
+}
+```
+
+**Response:**
+```json
+{
+  "conversation_id": "conv_123456",
+  "provider": "openrouter",
+  "model": "openai/gpt-4",
+  "available_models": ["openai/gpt-4", "openai/gpt-3.5-turbo"],
+  "summary": {
+    // ... updated conversation summary
+  }
+}
+```
+
+#### PUT /conversations/{conversation_id}/api-key
+Updates the API key for a conversation.
+
+**Request Body:**
+```json
+{
+  "api_key": "sk-new-api-key"
+}
+```
+
+**Response:**
+```json
+{
+  "conversation_id": "conv_123456",
+  "provider": "openrouter",
+  "model": "openai/gpt-4",
+  "available_models": ["openai/gpt-4", "openai/gpt-3.5-turbo"],
+  "summary": {
+    // ... updated conversation summary
+  }
+}
+```
+
+### History Management
+
+#### GET /conversations/{conversation_id}/export
+Exports conversation data.
+
+**Response:**
+```json
+{
+  "summary": {
+    "conversation_id": "conv_123456",
+    "provider": "openrouter",
+    "selected_model": "openai/gpt-4",
+    "selected_directory": "/path/to/project",
+    "selected_files": ["main.py"],
+    "persistent_files": ["main.py"],
+    "question_history": [
+      {
+        "question": "What does this code do?",
+        "status": "completed",
+        "response": "This code implements...",
+        "timestamp": "2023-12-01T14:30:22.123456",
+        "tokens_used": 150,
+        "processing_time": 2.34,
+        "model_used": "openai/gpt-4"
+      }
+    ],
+    "conversation_history": [
+      {"role": "user", "content": "What does this code do?"},
+      {"role": "assistant", "content": "This code implements..."}
+    ]
+  }
+}
+```
+
+#### POST /conversations/import
+Imports conversation data.
+
+**Request Body:**
+```json
+{
+  "provider": "openrouter",
+  "model": "openai/gpt-4",
+  "api_key": "sk-api-key",
+  "conversation_history": [
+    {"role": "user", "content": "What does this code do?"},
+    {"role": "assistant", "content": "This code implements..."}
+  ],
+  "question_history": [
+    {
+      "question": "What does this code do?",
+      "status": "completed",
+      "response": "This code implements...",
+      "timestamp": "2023-12-01T14:30:22.123456",
+      "tokens_used": 150,
+      "processing_time": 2.34,
+      "model_used": "openai/gpt-4"
+    }
+  ],
+  "selected_files": ["main.py"],
+  "persistent_files": ["main.py"],
+  "selected_directory": "/path/to/project"
+}
+```
+
+**Response:**
+```json
+{
+  "conversation_id": "conv_789012",
+  "provider": "openrouter",
+  "model": "openai/gpt-4",
+  "available_models": ["openai/gpt-4", "openai/gpt-3.5-turbo"],
+  "summary": {
+    // ... imported conversation summary
+  }
+}
+```
+
+### Settings & Theme
+
+#### GET /settings
+Retrieves current settings.
+
+**Response:**
+```json
+{
+  "theme": "light",
+  "provider": "openrouter",
+  "model": "openai/gpt-4"
+}
+```
+
+#### PUT /settings/theme
+Updates theme setting.
+
+**Request Body:**
+```json
+{
+  "theme": "dark"
+}
+```
+
+**Response:**
+```json
+{
+  "theme": "dark",
+  "message": "Theme updated"
+}
+```
+
+#### POST /settings/theme/toggle
+Toggles between light and dark theme.
+
+**Response:**
+```json
+{
+  "theme": "dark",
+  "message": "Theme toggled to dark"
+}
+```
+
+### System Messages
+
+#### GET /system-messages
+Lists available system messages.
+
+**Response:**
+```json
+{
+  "current": "systemmessage_default.txt",
+  "messages": [
+    {
+      "filename": "systemmessage_default.txt",
+      "display_name": "Default",
+      "preview": "General purpose instructions for Code Chat conversations.",
+      "length": 150,
+      "is_current": true
+    }
+  ]
+}
+```
+
+#### GET /system-messages/{filename}
+Retrieves content of a specific system message.
+
+**Response:**
+```json
+{
+  "filename": "systemmessage_default.txt",
+  "content": "You are an expert software engineer..."
+}
+```
+
+#### PUT /system-messages/current
+Sets the current system message.
+
+**Request Body:**
+```json
+{
+  "filename": "systemmessage_security.txt"
+}
+```
+
+**Response:**
+```json
+{
+  "current": "systemmessage_security.txt"
+}
+```
+
+#### POST /system-messages
+Creates a new system message.
+
+**Request Body:**
+```json
+{
+  "filename": "systemmessage_custom.txt",
+  "content": "Custom system message content..."
+}
+```
+
+**Response:**
+```json
+{
+  "filename": "systemmessage_custom.txt"
+}
+```
+
+#### DELETE /system-messages/{filename}
+Deletes a system message.
+
+**Response:**
+```json
+{
+  "filename": "systemmessage_custom.txt",
+  "deleted": true
+}
+```
 
 ## Error Handling
 
-The application implements comprehensive error handling:
+All API endpoints return appropriate HTTP status codes and error messages:
 
-- **Network Errors**: Automatic retry with exponential backoff
-- **API Errors**: Provider-specific error handling
-- **Validation Errors**: Input validation with user-friendly messages
-- **Security Errors**: Safe error logging without sensitive data exposure
+### Common Error Responses
 
-## Performance Optimizations
+#### 400 Bad Request
+```json
+{
+  "detail": "Invalid directory: Directory does not exist"
+}
+```
 
-- **Lazy Loading**: For large codebases using LazyCodebaseScanner
-- **Asynchronous Processing**: Non-blocking AI interactions
-- **File Caching**: Optimized file content retrieval
-- **Token Tracking**: Real-time usage monitoring
+#### 404 Not Found
+```json
+{
+  "detail": "Conversation not found"
+}
+```
 
-## Security Features
+#### 500 Internal Server Error
+```json
+{
+  "detail": "AI processing failed: API key invalid"
+}
+```
 
-- **API Key Masking**: Sensitive data never logged in plain text
-- **File Locking**: Safe concurrent file operations
-- **Input Validation**: Comprehensive validation of user inputs
-- **Error Sanitization**: Removal of sensitive information from error messages
+#### 503 Service Unavailable
+```json
+{
+  "detail": "AI processor not initialized"
+}
+```
 
-## Extension Points
+## Rate Limiting
 
-The modular architecture provides several extension points:
+- API requests are subject to the rate limits of the underlying AI providers
+- Implement exponential backoff for retry logic
+- Monitor token usage through response metadata
 
-1. **AI Providers**: Implement BaseAIProvider for new AI services
-2. **UI Components**: Extend UIController for new interface elements
-3. **File Scanners**: Implement custom scanning strategies
-4. **System Messages**: Add new expert modes via system message files
-5. **Tool Integration**: Extend pattern matching for new tool commands
+## Data Types
 
-This documentation covers the core API components. For implementation details, refer to the source code and inline documentation.
+### ConversationSummary
+```typescript
+interface ConversationSummary {
+  conversation_id: string;
+  provider: string;
+  selected_model: string;
+  selected_directory?: string;
+  selected_files: string[];
+  persistent_files: string[];
+  question_history: QuestionStatus[];
+  conversation_history: ChatMessage[];
+}
+```
+
+### QuestionStatus
+```typescript
+interface QuestionStatus {
+  question: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  response?: string;
+  timestamp: string;
+  tokens_used?: number;
+  processing_time?: number;
+  model_used?: string;
+}
+```
+
+### ChatMessage
+```typescript
+interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+```
+
+## SDK Examples
+
+### JavaScript/TypeScript
+```javascript
+// Create conversation
+const response = await fetch('/conversations', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    provider: 'openrouter',
+    model: 'openai/gpt-4',
+    apiKey: 'sk-your-key'
+  })
+});
+
+// Ask question
+const questionResponse = await fetch(`/conversations/${conversationId}/question`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    question: 'What does this code do?',
+    selectedFiles: ['main.py'],
+    persistent: false
+  })
+});
+```
+
+### Python
+```python
+import requests
+
+# Create conversation
+response = requests.post('http://localhost:8000/conversations', json={
+    'provider': 'openrouter',
+    'model': 'openai/gpt-4',
+    'apiKey': 'sk-your-key'
+})
+conversation_id = response.json()['conversation_id']
+
+# Ask question
+question_response = requests.post(
+    f'http://localhost:8000/conversations/{conversation_id}/question',
+    json={
+        'question': 'What does this code do?',
+        'selectedFiles': ['main.py'],
+        'persistent': False
+    }
+)
+```
+
+This API documentation covers the complete FastAPI backend interface used by the Code Chat with AI application. For implementation details, refer to the source code in the `web_backend/` directory.

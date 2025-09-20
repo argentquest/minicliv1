@@ -12,10 +12,7 @@ import { Header } from './components/Header';
 import { InputPanel } from './components/InputPanel';
 import { StatusBar } from './components/StatusBar';
 import { TabManager } from './components/TabManager';
-import { AboutModal } from './components/modals/AboutModal';
-import { ContextModal } from './components/modals/ContextModal';
-import { SettingsModal } from './components/modals/SettingsModal';
-import { SystemMessageModal } from './components/modals/SystemMessageModal';
+import { AboutModal, ContextModal, SettingsModal, SystemMessageModal } from './components/modals';
 import {
   askQuestion,
   clearConversation,

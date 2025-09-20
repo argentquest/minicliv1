@@ -36,6 +36,7 @@ class ContextDialog:
         # Dialog window
         self.dialog = None
         self.result = None  # Will be 'ok', 'cancel', or None
+        self.dialog_size = (750, 750)
         
         # UI components
         self.files_list = None
@@ -52,7 +53,8 @@ class ContextDialog:
         # Create dialog window
         self.dialog = tk.Toplevel(self.parent)
         self.dialog.title("Select Context Files")
-        self.dialog.geometry("500x500")
+        width, height = self.dialog_size
+        self.dialog.geometry(f"{width}x{height}")
         self.dialog.resizable(True, True)
         self.dialog.configure(bg=theme.colors['bg_primary'])
         
@@ -84,8 +86,7 @@ class ContextDialog:
         self.dialog.update_idletasks()
         
         # Use our explicitly set dialog size
-        dialog_width = 500
-        dialog_height = 500
+        dialog_width, dialog_height = self.dialog_size
         
         # Get parent window position and size
         parent_x = self.parent.winfo_rootx()

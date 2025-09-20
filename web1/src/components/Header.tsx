@@ -4,14 +4,12 @@ import { ActionButton } from './ActionButton';
 import type { HeaderAction, SystemMessageOption, ThemeName } from '../types';
 import {
   Brain,
-  Eraser,
   FolderOpen,
   Info,
   Moon,
   Play,
   PlusSquare,
   Save,
-  Send,
   Settings,
   Sun,
   Upload,
@@ -38,7 +36,7 @@ export function Header({
   onSystemMessageChange,
   onAction,
   themeName,
-  sendDisabled = false,
+  sendDisabled: _sendDisabled = false,
 }: HeaderProps) {
   const handleModelChange = (event: ChangeEvent<HTMLSelectElement>) => {
     onModelChange(event.target.value);
@@ -97,49 +95,68 @@ export function Header({
             variant="accent"
             icon={<FolderOpen size={16} />}
             onClick={() => onAction('onSetContext')}
+            title="Choose files to include as conversation context"
           >
             Set Context
-          </ActionButton>
-          <ActionButton
-            variant="primary"
-            icon={<Send size={16} />}
-            onClick={() => onAction('onSendQuestion')}
-            disabled={sendDisabled}
-          >
-            Send Question
           </ActionButton>
           <ActionButton
             variant="accent"
             icon={<Play size={16} />}
             onClick={() => onAction('onExecuteSystem')}
+            title="Run the currently selected system prompt"
           >
             Execute System Prompt
           </ActionButton>
-          <ActionButton icon={<Eraser size={16} />} onClick={() => onAction('onClearResponse')}>
-            Clear Response
-          </ActionButton>
-          <ActionButton icon={<PlusSquare size={16} />} onClick={() => onAction('onNewConversation')}>
+          <ActionButton
+            icon={<PlusSquare size={16} />}
+            onClick={() => onAction('onNewConversation')}
+            title="Start a fresh conversation tab"
+          >
             New Conversation
           </ActionButton>
         </div>
 
         <div className="secondary-actions">
-          <ActionButton icon={<Save size={16} />} onClick={() => onAction('onSaveHistory')}>
+          <ActionButton
+            icon={<Save size={16} />}
+            onClick={() => onAction('onSaveHistory')}
+            title="Export the current conversation history"
+          >
             Save History
           </ActionButton>
-          <ActionButton icon={<Upload size={16} />} onClick={() => onAction('onLoadHistory')}>
+          <ActionButton
+            icon={<Upload size={16} />}
+            onClick={() => onAction('onLoadHistory')}
+            title="Load a saved conversation history"
+          >
             Load History
           </ActionButton>
-          <ActionButton icon={<Settings size={16} />} onClick={() => onAction('onOpenSettings')}>
+          <ActionButton
+            icon={<Settings size={16} />}
+            onClick={() => onAction('onOpenSettings')}
+            title="Open application settings"
+          >
             Settings
           </ActionButton>
-          <ActionButton icon={themeIcon} onClick={() => onAction('onToggleTheme')}>
+          <ActionButton
+            icon={themeIcon}
+            onClick={() => onAction('onToggleTheme')}
+            title="Toggle between light and dark themes"
+          >
             {themeLabel}
           </ActionButton>
-          <ActionButton icon={<Brain size={16} />} onClick={() => onAction('onOpenSystemMessage')}>
+          <ActionButton
+            icon={<Brain size={16} />}
+            onClick={() => onAction('onOpenSystemMessage')}
+            title="Review or edit the system message library"
+          >
             System Message
           </ActionButton>
-          <ActionButton icon={<Info size={16} />} onClick={() => onAction('onOpenAbout')}>
+          <ActionButton
+            icon={<Info size={16} />}
+            onClick={() => onAction('onOpenAbout')}
+            title="View application information"
+          >
             About
           </ActionButton>
         </div>
