@@ -36,3 +36,10 @@ INFO:     127.0.0.1:52642 - "GET /health HTTP/1.1" 200 OK
 INFO:     127.0.0.1:52644 - "GET /health HTTP/1.1" 200 OK
 INFO:     127.0.0.1:52646 - "GET /health HTTP/1.1" 200 OK
 INFO:     127.0.0.1:49823 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57786 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63877 - "GET /meta/ui-defaults HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63877 - "OPTIONS /conversations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56457 - "POST /conversations HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59715 - "POST /settings/theme/toggle HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59715 - "GET /system-messages/default HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63782 - "POST /ai-test HTTP/1.1" 404 Not Found
