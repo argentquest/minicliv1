@@ -4,6 +4,7 @@ Unit tests for the AI processor and provider system.
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 import requests
+import os
 
 from ai import AIProcessor, AIProviderFactory
 from base_ai import BaseAIProvider, AIProviderConfig
@@ -65,6 +66,16 @@ class TestAIProviderFactory:
         # Remove from static providers for testing
         if "test" in AIProviderFactory._STATIC_PROVIDERS:
             del AIProviderFactory._STATIC_PROVIDERS["test"]
+
+        providers_env = os.getenv("PROVIDERS")
+        if providers_env:
+            provider_list = [p.strip() for p in providers_env.split(',') if p.strip()]
+            if "test" in provider_list:
+                provider_list.remove("test")
+                if provider_list:
+                    os.environ["PROVIDERS"] = ','.join(provider_list)
+                else:
+                    os.environ.pop("PROVIDERS", None)
     
     def test_register_provider_invalid_class(self):
         """Test registering provider with invalid class."""

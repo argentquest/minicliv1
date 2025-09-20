@@ -412,28 +412,28 @@ class LazyCodebaseScanner:
 # Backwards compatibility wrapper
 class CodebaseScanner:
     """Backwards compatible wrapper around LazyCodebaseScanner."""
-    
+
     def __init__(self):
         self.lazy_scanner = LazyCodebaseScanner()
         # Maintain original interface
         self.supported_extensions = self.lazy_scanner.supported_extensions[:1]  # Only .py for compatibility
         self.special_files = ['.env']  # Original special files
         self.ignore_folders = list(self.lazy_scanner.ignore_folders)
-    
+
     def scan_directory(self, directory: str) -> List[str]:
         """Scan directory and return file paths (original interface)."""
-        file_paths = []
+        file_paths: List[str] = []
         try:
             for file_batch in self.lazy_scanner.scan_directory_lazy(directory):
                 for file_info in file_batch:
                     # Filter to original supported extensions for compatibility
-                    if (file_info.extension in self.supported_extensions or 
-                        os.path.basename(file_info.path) in self.special_files):
+                    if (file_info.extension in self.supported_extensions or
+                            os.path.basename(file_info.path) in self.special_files):
                         file_paths.append(file_info.path)
         except Exception:
             pass
         return sorted(file_paths)
-    
+
     def get_relative_paths(self, files: List[str], base_directory: str) -> List[str]:
         """Convert absolute paths to relative paths."""
         relative_paths = []
@@ -444,15 +444,19 @@ class CodebaseScanner:
             except ValueError:
                 relative_paths.append(os.path.basename(file_path))
         return relative_paths
-    
+
     def read_file_content(self, file_path: str) -> str:
         """Read file content."""
         return self.lazy_scanner.get_file_content_lazy(file_path)
-    
+
     def get_codebase_content(self, files: List[str]) -> str:
         """Get combined codebase content."""
-        return self.lazy_scanner.get_codebase_content_lazy(files)
-    
+        filtered_files = [
+            file_path for file_path in files
+            if not any(part in self.ignore_folders for part in Path(file_path).parts)
+        ]
+        return self.lazy_scanner.get_codebase_content_lazy(filtered_files)
+
     def validate_directory(self, directory: str) -> Tuple[bool, str]:
         """Validate directory."""
         if not directory:

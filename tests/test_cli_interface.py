@@ -10,6 +10,7 @@ from io import StringIO
 import sys
 
 from cli_interface import CLIInterface
+from cli_shared import ConfigurationError
 
 
 class TestCLIInterface:
@@ -147,80 +148,70 @@ class TestCLIInterface:
     def test_setup_ai_processor_success(self):
         """Test successful AI processor setup."""
         cli = CLIInterface()
-        
+
         config = {
             'api_key': 'sk-test123',
             'provider': 'openrouter'
         }
-        
-        with patch('cli_interface.AIProcessor') as mock_ai_processor_class:
+
+        with patch('cli_interface.create_ai_processor') as mock_create:
             mock_processor = Mock()
-            mock_processor.validate_api_key.return_value = True
-            mock_ai_processor_class.return_value = mock_processor
-            
+            mock_processor.provider = 'openrouter'
+            mock_create.return_value = mock_processor
+
             result = cli.setup_ai_processor(config)
-            
-            assert result is True
-            assert cli.ai_processor == mock_processor
-            # The AIProcessor now takes a provider instance, not separate api_key and provider
-            # So we need to check that it was called with the correct provider instance
-            mock_ai_processor_class.assert_called_once()
-            call_args = mock_ai_processor_class.call_args[0][0]  # Get the first positional argument
-            assert hasattr(call_args, 'api_key')
-            assert call_args.api_key == 'sk-test123'
-            assert call_args.get_provider_name() == 'openrouter'
+
+        assert result is True
+        assert cli.ai_processor == mock_processor
+        mock_create.assert_called_once_with('openrouter', 'sk-test123')
     
     def test_setup_ai_processor_invalid_key(self, capsys):
         """Test AI processor setup with invalid API key."""
         cli = CLIInterface()
-        
+
         config = {
             'api_key': '',
             'provider': 'openrouter'
         }
-        
-        with patch('cli_interface.AIProcessor') as mock_ai_processor_class:
-            mock_processor = Mock()
-            mock_processor.validate_api_key.return_value = False
-            mock_ai_processor_class.return_value = mock_processor
-            
+
+        with patch('cli_interface.create_ai_processor', side_effect=ConfigurationError('No API key configured. Please set API_KEY in your environment or provide --api-key.')):
             result = cli.setup_ai_processor(config)
-            
-            assert result is False
-            captured = capsys.readouterr()
-            assert "No API key configured" in captured.err
+
+        assert result is False
+        captured = capsys.readouterr()
+        assert 'No API key configured' in captured.err
     
     def test_setup_system_prompt_default(self):
         """Test setup with default system prompt."""
         cli = CLIInterface()
-        
-        result = cli.setup_system_prompt(None)
+
+        with patch('cli_interface.configure_system_prompt', return_value=(True, 'Using default system prompt')) as mock_config:
+            result = cli.setup_system_prompt(None)
+
         assert result is True
+        mock_config.assert_called_once_with(None)
     
     def test_setup_system_prompt_custom(self):
         """Test setup with custom system prompt."""
         cli = CLIInterface()
-        
-        with patch('os.path.exists', return_value=True):
-            with patch('cli_interface.system_message_manager') as mock_manager:
-                mock_manager.set_current_system_message_file.return_value = True
-                
-                result = cli.setup_system_prompt('security_expert')
-                
-                assert result is True
-                mock_manager.set_current_system_message_file.assert_called_once_with('systemmessage_security_expert.txt')
+
+        with patch('cli_interface.configure_system_prompt', return_value=(True, 'Using system prompt: security_expert')) as mock_config:
+            result = cli.setup_system_prompt('security_expert')
+
+        assert result is True
+        mock_config.assert_called_once_with('security_expert')
     
     def test_setup_system_prompt_file_not_found(self, capsys):
         """Test setup with non-existent system prompt file."""
         cli = CLIInterface()
-        
-        with patch('os.path.exists', return_value=False):
+
+        with patch('cli_interface.configure_system_prompt', return_value=(False, "System prompt file 'systemmessage_nonexistent.txt' not found.")):
             result = cli.setup_system_prompt('nonexistent')
-            
-            assert result is False
-            captured = capsys.readouterr()
-            assert "not found" in captured.err
-    
+
+        assert result is False
+        captured = capsys.readouterr()
+        assert 'not found' in captured.err
+
     def test_apply_file_filters_include_only(self):
         """Test file filtering with include patterns only."""
         cli = CLIInterface()
@@ -414,45 +405,35 @@ class TestCLIIntegration:
     @pytest.mark.integration
     def test_full_cli_workflow_success(self, temp_dir, mock_requests_post):
         """Test complete CLI workflow from start to finish."""
-        # Create test files
         test_file = Path(temp_dir) / "main.py"
         test_file.write_text("def hello():\n    return 'Hello, World!'")
-        
-        # Create system prompt file
-        system_prompt_file = Path.cwd() / "systemmessage_test.txt"
-        system_prompt_file.write_text("You are a helpful assistant.")
-        
-        try:
-            cli = CLIInterface()
-            
-            # Mock arguments
-            args = Mock()
-            args.folder = str(temp_dir)
-            args.question = "What does this code do?"
-            args.api_key = "sk-test123"
-            args.provider = "openrouter"
-            args.model = "gpt-4"
-            args.system_prompt = "test"
-            args.include = None
-            args.exclude = None
-            args.output = "structured"
-            args.save_to = None
-            args.verbose = False
-            
-            # Mock system message manager
-            with patch('cli_interface.system_message_manager') as mock_manager:
-                mock_manager.set_current_system_message_file.return_value = True
-                
-                with patch('os.path.exists', return_value=True):
-                    exit_code = cli.run_cli(args)
-            
-            assert exit_code == 0
-            
-        finally:
-            # Cleanup
-            if system_prompt_file.exists():
-                system_prompt_file.unlink()
-    
+
+        cli = CLIInterface()
+
+        args = Mock()
+        args.folder = str(temp_dir)
+        args.question = "What does this code do?"
+        args.api_key = "sk-test123"
+        args.provider = "openrouter"
+        args.model = "gpt-4"
+        args.system_prompt = "test"
+        args.include = None
+        args.exclude = None
+        args.output = "structured"
+        args.save_to = None
+        args.verbose = False
+
+        with patch('cli_interface.create_ai_processor') as mock_create, \
+             patch('cli_interface.configure_system_prompt', return_value=(True, 'Using system prompt: test')):
+            mock_processor = Mock()
+            mock_processor.provider = 'openrouter'
+            mock_processor.process_question.return_value = 'Function returns a greeting.'
+            mock_create.return_value = mock_processor
+
+            exit_code = cli.run_cli(args)
+
+        assert exit_code == 0
+
     def test_cli_workflow_missing_api_key(self, temp_dir, capsys):
         """Test CLI workflow with missing API key."""
         # Create test files
@@ -476,12 +457,13 @@ class TestCLIIntegration:
         args.verbose = False
         
         with patch.dict('os.environ', {}, clear=True):  # No env variables
-            with patch('cli_interface.load_dotenv'):  # Prevent loading .env file
+            with patch('cli_shared.load_dotenv'), \
+                 patch('cli_interface.create_ai_processor', side_effect=ConfigurationError('No API key configured. Please set API_KEY in your environment or provide --api-key.')):
                 exit_code = cli.run_cli(args)
         
         assert exit_code == 1
         captured = capsys.readouterr()
-        assert "No API key configured" in captured.err
+        assert 'No API key configured' in captured.err
     
     def test_cli_workflow_invalid_directory(self, capsys):
         """Test CLI workflow with invalid directory."""

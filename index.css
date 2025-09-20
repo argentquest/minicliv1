@@ -1,0 +1,85 @@
+:root {
+  font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+}
+
+:root[data-theme='light'] {
+  --color-bg-primary: #f8f9fa;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #e9ecef;
+  --color-bg-accent: #f0f7ff;
+  --color-border: #dee2e6;
+  --color-border-focus: #0d6efd;
+  --color-text-primary: #212529;
+  --color-text-secondary: #6c757d;
+  --color-text-muted: #adb5bd;
+  --color-primary: #007bff;
+  --color-primary-hover: #0056b3;
+  --color-accent: #6f42c1;
+  --color-accent-hover: #5a32a3;
+  --color-success: #28a745;
+  --color-success-light: #d4edda;
+  --color-warning: #ffc107;
+  --color-warning-light: #fff3cd;
+  --color-danger: #dc3545;
+  --color-danger-light: #f8d7da;
+  --color-selection: #e7f3ff;
+  --color-hover: #f8f9fa;
+  --shadow-elevated: 0 12px 24px rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme='dark'] {
+  --color-bg-primary: #1a1a1a;
+  --color-bg-secondary: #2d2d2d;
+  --color-bg-tertiary: #3d3d3d;
+  --color-bg-accent: #264653;
+  --color-border: #404040;
+  --color-border-focus: #4dabf7;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #b0b0b0;
+  --color-text-muted: #808080;
+  --color-primary: #4dabf7;
+  --color-primary-hover: #339af0;
+  --color-accent: #9775fa;
+  --color-accent-hover: #7c3aed;
+  --color-success: #51cf66;
+  --color-success-light: #2b8a3e;
+  --color-warning: #ffd43b;
+  --color-warning-light: #fd7e14;
+  --color-danger: #ff6b6b;
+  --color-danger-light: #c92a2a;
+  --color-selection: #2b5797;
+  --color-hover: #404040;
+  --shadow-elevated: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button, input, select, textarea {
+  font: inherit;
+}
+
+::selection {
+  background: var(--color-selection);
+  color: var(--color-text-primary);
+}

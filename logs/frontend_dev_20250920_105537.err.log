@@ -1,0 +1,123 @@
+[2m11:02:23 AM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src\components\Header.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/Code2025/minicli/web1/src/components/Header.tsx[39m:18:7
+[33m  29 |    Sun,
+  30 |    Upload
+  31 |  } from "lucide-react";
+     |          ^
+  32 |  export function Header({
+  33 |    models,[39m
+      at formatError (file:///C:/Code2025/minicli/web1/node_modules/vite/dist/node/chunks/dep-827b23df.js:44066:46)
+      at TransformContext.error (file:///C:/Code2025/minicli/web1/node_modules/vite/dist/node/chunks/dep-827b23df.js:44062:19)
+      at normalizeUrl (file:///C:/Code2025/minicli/web1/node_modules/vite/dist/node/chunks/dep-827b23df.js:41845:33)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async file:///C:/Code2025/minicli/web1/node_modules/vite/dist/node/chunks/dep-827b23df.js:41999:47
+      at async Promise.all (index 4)
+      at async TransformContext.transform (file:///C:/Code2025/minicli/web1/node_modules/vite/dist/node/chunks/dep-827b23df.js:41915:13)
+      at async Object.transform (file:///C:/Code2025/minicli/web1/node_modules/vite/dist/node/chunks/dep-827b23df.js:44356:30)
+      at async loadAndTransform (file:///C:/Code2025/minicli/web1/node_modules/vite/dist/node/chunks/dep-827b23df.js:55088:29)
+      at async viteTransformMiddleware (file:///C:/Code2025/minicli/web1/node_modules/vite/dist/node/chunks/dep-827b23df.js:64699:32)
+[2m11:02:23 AM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src\components\Header.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/Code2025/minicli/web1/src/components/Header.tsx[39m:18:7
+[33m  29 |    Sun,
+  30 |    Upload
+  31 |  } from "lucide-react";
+     |          ^
+  32 |  export function Header({
+  33 |    models,[39m
+      at formatError (file:///C:/Code2025/minicli/web1/node_modules/vite/dist/node/chunks/dep-827b23df.js:44066:46)
+      at TransformContext.error (file:///C:/Code2025/minicli/web1/node_modules/vite/dist/node/chunks/dep-827b23df.js:44062:19)
+      at normalizeUrl (file:///C:/Code2025/minicli/web1/node_modules/vite/dist/node/chunks/dep-827b23df.js:41845:33)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async file:///C:/Code2025/minicli/web1/node_modules/vite/dist/node/chunks/dep-827b23df.js:41999:47
+      at async Promise.all (index 4)
+      at async TransformContext.transform (file:///C:/Code2025/minicli/web1/node_modules/vite/dist/node/chunks/dep-827b23df.js:41915:13)
+      at async Object.transform (file:///C:/Code2025/minicli/web1/node_modules/vite/dist/node/chunks/dep-827b23df.js:44356:30)
+      at async loadAndTransform (file:///C:/Code2025/minicli/web1/node_modules/vite/dist/node/chunks/dep-827b23df.js:55088:29)
+      at async viteTransformMiddleware (file:///C:/Code2025/minicli/web1/node_modules/vite/dist/node/chunks/dep-827b23df.js:64699:32)
+C:\Code2025\minicli\web1\src\App.tsx: Unexpected keyword 'const'. (730:10)
+
+[0m [90m 728 |[39m   }[33m,[39m [systemMessageSelection[33m,[39m updateStatus])[33m;[39m
+ [90m 729 |[39m
+[31m[1m>[22m[39m[90m 730 |[39m   [36mconst[39m   [36mconst[39m handleSettingsSave [33m=[39m useCallback([36masync[39m () [33m=>[39m {
+ [90m     |[39m           [31m[1m^[22m[39m
+ [90m 731 |[39m     [36mconst[39m tab [33m=[39m activeTab[33m;[39m
+ [90m 732 |[39m     [36mif[39m ([33m![39mtab) {
+ [90m 733 |[39m       [36mreturn[39m[33m;[39m[0m
+C:\Code2025\minicli\web1\src\App.tsx: Unexpected keyword 'const'. (730:10)
+
+[0m [90m 728 |[39m   }[33m,[39m [systemMessageSelection[33m,[39m updateStatus])[33m;[39m
+ [90m 729 |[39m
+[31m[1m>[22m[39m[90m 730 |[39m   [36mconst[39m   [36mconst[39m handleSettingsSave [33m=[39m useCallback([36masync[39m () [33m=>[39m {
+ [90m     |[39m           [31m[1m^[22m[39m
+ [90m 731 |[39m     [36mconst[39m tab [33m=[39m activeTab[33m;[39m
+ [90m 732 |[39m     [36mif[39m ([33m![39mtab) {
+ [90m 733 |[39m       [36mreturn[39m[33m;[39m[0m
+[2m2:20:19 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: C:\Code2025\minicli\web1\src\App.tsx: Unexpected keyword 'const'. (730:10)
+
+[0m [90m 728 |[31m   }[33m,[31m [systemMessageSelection[33m,[31m updateStatus])[33m;[31m
+ [90m 729 |[31m
+[31m[1m>[22m[31m[90m 730 |[31m   [36mconst[31m   [36mconst[31m handleSettingsSave [33m=[31m useCallback([36masync[31m () [33m=>[31m {
+ [90m     |[31m           [31m[1m^[22m[31m
+ [90m 731 |[31m     [36mconst[31m tab [33m=[31m activeTab[33m;[31m
+ [90m 732 |[31m     [36mif[31m ([33m![31mtab) {
+ [90m 733 |[31m       [36mreturn[31m[33m;[31m[0m[39m
+  Plugin: [35mvite:react-babel[39m
+  File: [36mC:/Code2025/minicli/web1/src/App.tsx[39m:730:10
+[33m  749|    }, [activeTab, apiKeyInput, updateStatus, updateTabFromResponse]);
+  750|  
+  751|    const badges = useMemo(() => {
+     |                        ^
+  752|      if (!activeTab) {
+  753|        return [] as string[];[39m
+      at constructor (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:367:19)
+      at TypeScriptParserMixin.raise (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:6630:19)
+      at TypeScriptParserMixin.checkReservedWord (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:12234:12)
+      at TypeScriptParserMixin.checkReservedWord (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:9398:13)
+      at TypeScriptParserMixin.parseIdentifierName (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:12221:12)
+      at TypeScriptParserMixin.parseIdentifier (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:12191:23)
+      at TypeScriptParserMixin.parseBindingAtom (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:7389:17)
+      at TypeScriptParserMixin.parseBindingAtom (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:9962:18)
+      at TypeScriptParserMixin.parseVarId (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:13411:21)
+      at TypeScriptParserMixin.parseVarId (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:9772:11)
+      at TypeScriptParserMixin.parseVar (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:13392:12)
+      at TypeScriptParserMixin.parseVarStatement (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:13239:10)
+      at TypeScriptParserMixin.parseVarStatement (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:9498:31)
+      at TypeScriptParserMixin.parseStatementContent (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:12860:23)
+      at TypeScriptParserMixin.parseStatementContent (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:9532:18)
+      at TypeScriptParserMixin.parseStatementLike (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:12776:17)
+      at TypeScriptParserMixin.parseStatementListItem (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:12756:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:13325:61)
+      at TypeScriptParserMixin.parseBlockBody (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:13318:10)
+      at TypeScriptParserMixin.parseBlock (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:13306:10)
+      at TypeScriptParserMixin.parseFunctionBody (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:12110:24)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:12096:10)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:9252:18)
+      at C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:13454:12
+      at TypeScriptParserMixin.withSmartMixTopicForbiddingContext (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:12413:14)
+      at TypeScriptParserMixin.parseFunction (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:13453:10)
+      at TypeScriptParserMixin.parseFunctionStatement (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:13134:17)
+      at TypeScriptParserMixin.parseStatementContent (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:12800:21)
+      at TypeScriptParserMixin.parseStatementContent (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:9532:18)
+      at TypeScriptParserMixin.parseStatementLike (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:12776:17)
+      at TypeScriptParserMixin.parseModuleItem (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:12753:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:13325:36)
+      at TypeScriptParserMixin.parseBlockBody (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:13318:10)
+      at TypeScriptParserMixin.parseProgram (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:12634:10)
+      at TypeScriptParserMixin.parseTopLevel (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:12624:25)
+      at TypeScriptParserMixin.parse (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:14501:10)
+      at TypeScriptParserMixin.parse (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:10149:18)
+      at parse (C:\Code2025\minicli\web1\node_modules\@babel\core\node_modules\@babel\parser\lib\index.js:14535:38)
+      at parser (C:\Code2025\minicli\web1\node_modules\@babel\core\lib\parser\index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (C:\Code2025\minicli\web1\node_modules\@babel\core\lib\transformation\normalize-file.js:64:37)
+      at normalizeFile.next (<anonymous>)
+      at run (C:\Code2025\minicli\web1\node_modules\@babel\core\lib\transformation\index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (C:\Code2025\minicli\web1\node_modules\@babel\core\lib\transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (C:\Code2025\minicli\web1\node_modules\gensync\index.js:261:32)
+      at C:\Code2025\minicli\web1\node_modules\gensync\index.js:273:13
+      at async.call.result.err.err (C:\Code2025\minicli\web1\node_modules\gensync\index.js:223:11)
+      at C:\Code2025\minicli\web1\node_modules\gensync\index.js:189:28

@@ -1,0 +1,38 @@
+Starting Code Chat AI FastAPI Server
+Server will be available at: http://0.0.0.0:8000
+API documentation at: http://0.0.0.0:8000/docs
+==================================================
+INFO:     127.0.0.1:65231 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59091 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62173 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62173 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65101 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65101 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51499 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51659 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63718 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64899 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65047 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56170 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56183 - "GET /stories HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56199 - "GET /api/stories HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56215 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56230 - "GET /models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56242 - "GET /providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56284 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56297 - "POST /analyze HTTP/1.1" 422 Unprocessable Entity
+INFO:     127.0.0.1:60356 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60358 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60360 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60362 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60364 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60366 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60368 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52634 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52636 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52638 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52640 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52642 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52644 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52646 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49823 - "GET /health HTTP/1.1" 200 OK

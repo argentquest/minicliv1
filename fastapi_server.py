@@ -42,8 +42,10 @@ import uvicorn
 from ai import create_ai_processor, AIProviderFactory
 from file_scanner import CodebaseScanner
 from lazy_file_scanner import LazyCodebaseScanner
+from file_filters import filter_files
 from env_manager import EnvManager
 from logger import get_logger
+from web_backend.api import router as web_router
 
 # Initialize logger
 logger = get_logger(__name__)
@@ -59,6 +61,9 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+# Mount the richer web API under /web
+app.include_router(web_router, prefix="/web")
 
 # Add CORS middleware
 app.add_middleware(
@@ -361,27 +366,10 @@ async def analyze_code_explicit(
             raise HTTPException(status_code=400, detail="No supported files found in directory")
 
         # Filter files based on include/exclude patterns
-        if include or exclude:
-            filtered_files = []
-            include_patterns = [p.strip() for p in include.split(',')] if include else []
-            exclude_patterns = [p.strip() for p in exclude.split(',')] if exclude else []
+        files = filter_files(files, include, exclude) if (include or exclude) else files
 
-            for file_path in files:
-                filename = os.path.basename(file_path)
-
-                # Check include patterns
-                if include_patterns:
-                    if not any(pattern in filename for pattern in include_patterns):
-                        continue
-
-                # Check exclude patterns
-                if exclude_patterns:
-                    if any(pattern in filename for pattern in exclude_patterns):
-                        continue
-
-                filtered_files.append(file_path)
-
-            files = filtered_files
+        if not files:
+            raise HTTPException(status_code=400, detail="No files found after applying filters")
 
         logger.info(f"Processing {len(files)} files")
 
@@ -429,9 +417,9 @@ def main():
 
     args = parser.parse_args()
 
-    print("🚀 Starting Code Chat AI FastAPI Server")
-    print(f"📡 Server will be available at: http://{args.host}:{args.port}")
-    print(f"📚 API documentation at: http://{args.host}:{args.port}/docs")
+    print("Starting Code Chat AI FastAPI Server")
+    print(f"Server will be available at: http://{args.host}:{args.port}")
+    print(f"API documentation at: http://{args.host}:{args.port}/docs")
     print("=" * 50)
 
     uvicorn.run(

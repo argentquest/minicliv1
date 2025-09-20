@@ -44,12 +44,16 @@ from rich.layout import Layout
 from rich.align import Align
 from rich.markdown import Markdown
 from rich import box
-from dotenv import load_dotenv
+from file_filters import filter_files
+from cli_shared import (
+    ConfigurationError,
+    configure_system_prompt,
+    create_ai_processor,
+    load_configuration as load_cli_configuration,
+)
 
 # Import existing core functionality
 from lazy_file_scanner import CodebaseScanner, LazyCodebaseScanner
-from ai import AIProcessor, AIProviderFactory
-from system_message_manager import system_message_manager
 from logger import get_logger, log_performance
 from env_validator import env_validator
 
@@ -132,7 +136,7 @@ class RichCLIInterface:
 
         try:
             # Load environment variables
-            load_dotenv()
+            load_cli_configuration()
             env_vars = {
                 'API_KEY': os.getenv('API_KEY', ''),
                 'PROVIDER': os.getenv('PROVIDER', ''),
@@ -181,29 +185,19 @@ class RichCLIInterface:
         self.logger.info("Loading configuration")
 
         try:
-            with Status("[cyan]Loading configuration...[/cyan]", spinner="dots") as status:
-                # Load .env file
-                load_dotenv()
+            with Status("[cyan]Loading configuration...[/cyan]", spinner="dots"):
+                config = load_cli_configuration(api_key, provider, model)
 
-                config = {
-                    'api_key': os.getenv('API_KEY', ''),
-                    'provider': os.getenv('PROVIDER', 'openrouter'),
-                    'model': os.getenv('DEFAULT_MODEL', 'openai/gpt-3.5-turbo'),
-                    'models': [m.strip() for m in os.getenv('MODELS', '').split(',') if m.strip()]
-                }
+                self.logger.debug(
+                    f"Base configuration loaded: provider={config['provider']}, model={config['model']}, "
+                    f"models_count={len(config['models'])}"
+                )
 
-                self.logger.debug(f"Base configuration loaded: provider={config['provider']}, "
-                                f"model={config['model']}, models_count={len(config['models'])}")
-
-                # Override with CLI arguments
                 if api_key:
-                    config['api_key'] = api_key
                     self.logger.info("API key overridden from CLI argument")
                 if provider:
-                    config['provider'] = provider
                     self.logger.info(f"Provider overridden from CLI argument: {provider}")
                 if model:
-                    config['model'] = model
                     self.logger.info(f"Model overridden from CLI argument: {model}")
 
                 self.config = config
@@ -221,57 +215,32 @@ class RichCLIInterface:
 
         try:
             with Status("[cyan]Initializing AI processor...[/cyan]", spinner="dots"):
-                factory = AIProviderFactory()
-                provider = factory.create_provider(config['provider'], config['api_key'])
-                self.ai_processor = AIProcessor(provider)
-
-                self.logger.debug(f"AI provider created: {config['provider']}")
-                self.logger.debug("AI processor instance created")
-
-                if not self.ai_processor.validate_api_key():
-                    self.logger.error("API key validation failed")
-                    console.print("[red]ERROR: No valid API key configured.[/red]")
-                    console.print("[dim]Set API_KEY in .env file or use --api-key option.[/dim]")
-                    return False
+                self.ai_processor = create_ai_processor(config['provider'], config['api_key'])
 
             self.logger.info(f"AI processor initialized successfully with {config['provider']} provider")
             console.print(f"[green]SUCCESS: AI processor initialized with {config['provider']} provider[/green]")
             return True
 
-        except Exception as e:
-            self.logger.exception(f"Failed to initialize AI processor: {str(e)}")
-            console.print(f"[red]ERROR: Failed to initialize AI processor: {str(e)}[/red]")
+        except ConfigurationError as error:
+            self.logger.error(f"AI processor configuration failed: {error}")
+            console.print(f"[red]ERROR: {error}[/red]")
             return False
     
     def setup_system_prompt(self, system_prompt_name: Optional[str]) -> bool:
         """Set up system prompt with validation."""
-        if not system_prompt_name:
-            self.logger.info("Using default system prompt")
-            console.print("[dim]Using default system prompt[/dim]")
+        success, message = configure_system_prompt(system_prompt_name)
+
+        if success:
+            self.logger.info(message)
+            if system_prompt_name:
+                console.print(f"[green]SUCCESS: {message}[/green]")
+            else:
+                console.print(f"[dim]{message}[/dim]")
             return True
 
-        filename = f"systemmessage_{system_prompt_name}.txt"
-        self.logger.info(f"Setting up system prompt: {system_prompt_name} (file: {filename})")
-
-        if not os.path.exists(filename):
-            self.logger.error(f"System prompt file not found: {filename}")
-            console.print(f"[red]ERROR: System prompt file '{filename}' not found.[/red]")
-            return False
-
-        try:
-            success = system_message_manager.set_current_system_message_file(filename)
-            if success:
-                self.logger.info(f"System prompt set successfully: {system_prompt_name}")
-                console.print(f"[green]SUCCESS: Using system prompt: {system_prompt_name}[/green]")
-                return True
-            else:
-                self.logger.error(f"Failed to set system prompt file: {filename}")
-                console.print(f"[red]ERROR: Failed to load system prompt file '{filename}'.[/red]")
-                return False
-        except Exception as e:
-            self.logger.exception(f"Exception while setting system prompt: {str(e)}")
-            console.print(f"[red]ERROR: Exception while loading system prompt: {str(e)}[/red]")
-            return False
+        self.logger.error(message)
+        console.print(f"[red]ERROR: {message}[/red]")
+        return False
     
     def scan_codebase_with_progress(self,
                                     folder_path: str,
@@ -392,70 +361,31 @@ class RichCLIInterface:
         console.print(f"[green]SUCCESS: Lazy scanned {len(filtered_files)} files successfully[/green]")
         return filtered_files, codebase_content
     
-    def _apply_file_filters_with_progress(self, files: List[str], include_patterns: Optional[str], 
-                                        exclude_patterns: Optional[str], progress, task) -> List[str]:
+    def _apply_file_filters_with_progress(
+        self,
+        files: List[str],
+        include_patterns: Optional[str],
+        exclude_patterns: Optional[str],
+        progress,
+        task,
+    ) -> List[str]:
         """Apply file filters with progress updates."""
-        import fnmatch
-        
-        filtered_files = files
-        
-        # Apply include patterns
+        include_filtered = filter_files(files, include_patterns, None) if include_patterns else list(files)
         if include_patterns:
-            patterns = [p.strip() for p in include_patterns.split(',')]
-            included_files = []
-            for pattern in patterns:
-                for file_path in files:
-                    filename = os.path.basename(file_path)
-                    if fnmatch.fnmatch(filename, pattern) or fnmatch.fnmatch(file_path, pattern):
-                        included_files.append(file_path)
-            filtered_files = list(set(included_files))
-            console.print(f"[dim]📋 Include filter: {len(filtered_files)} files match {patterns}[/dim]")
-        
-        # Apply exclude patterns
+            console.print(f"[dim]?? Include filter: {len(include_filtered)} files match {include_patterns}[/dim]")
+
+        filtered_files = filter_files(include_filtered, None, exclude_patterns)
         if exclude_patterns:
-            patterns = [p.strip() for p in exclude_patterns.split(',')]
-            excluded_files = []
-            for pattern in patterns:
-                for file_path in filtered_files:
-                    filename = os.path.basename(file_path)
-                    if fnmatch.fnmatch(filename, pattern) or fnmatch.fnmatch(file_path, pattern):
-                        excluded_files.append(file_path)
-            
-            filtered_files = [f for f in filtered_files if f not in excluded_files]
-            if excluded_files:
-                console.print(f"[dim]🚫 Exclude filter: {len(excluded_files)} files excluded by {patterns}[/dim]")
-        
+            excluded_count = len(include_filtered) - len(filtered_files)
+            if excluded_count > 0:
+                console.print(f"[dim]?? Exclude filter: {excluded_count} files excluded by {exclude_patterns}[/dim]")
+
         return filtered_files
-    
+
     def _apply_file_filters_simple(self, files: List[str], include_patterns: Optional[str], exclude_patterns: Optional[str]) -> List[str]:
         """Simple file filter application without progress updates."""
-        import fnmatch
-        
-        filtered_files = files
-        
-        if include_patterns:
-            patterns = [p.strip() for p in include_patterns.split(',')]
-            included_files = []
-            for pattern in patterns:
-                for file_path in files:
-                    filename = os.path.basename(file_path)
-                    if fnmatch.fnmatch(filename, pattern) or fnmatch.fnmatch(file_path, pattern):
-                        included_files.append(file_path)
-            filtered_files = list(set(included_files))
-        
-        if exclude_patterns:
-            patterns = [p.strip() for p in exclude_patterns.split(',')]
-            excluded_files = []
-            for pattern in patterns:
-                for file_path in filtered_files:
-                    filename = os.path.basename(file_path)
-                    if fnmatch.fnmatch(filename, pattern) or fnmatch.fnmatch(file_path, pattern):
-                        excluded_files.append(file_path)
-            
-            filtered_files = [f for f in filtered_files if f not in excluded_files]
-        
-        return filtered_files
-    
+        return filter_files(files, include_patterns, exclude_patterns)
+
     def process_question_with_status(self, question: str, codebase_content: str, model: str) -> Optional[Dict[str, Any]]:
         """Process question with beautiful status indication and real-time updates."""
         self.logger.info(f"Starting AI question processing with model: {model}")

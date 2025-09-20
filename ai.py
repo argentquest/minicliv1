@@ -155,6 +155,20 @@ class AIProviderFactory:
         # Add to static providers for future use
         cls._STATIC_PROVIDERS[name] = provider_class
 
+        # Ensure dynamically configured providers pick up the new entry
+        try:
+            import os
+
+            providers_env = os.getenv('PROVIDERS')
+            if providers_env:
+                provider_list = [p.strip() for p in providers_env.split(',') if p.strip()]
+                if name not in provider_list:
+                    provider_list.append(name)
+                    os.environ['PROVIDERS'] = ','.join(provider_list)
+        except Exception:
+            # If environment updates fail, continue with static mapping fallback
+            pass
+
 
 class AIProcessor:
     """

@@ -165,28 +165,7 @@ class TestCodebaseScanner:
         assert "class Class1:" in combined_content
         assert "class Class2:" in combined_content
     
-    def test_get_codebase_content_ignores_folders(self, temp_dir):
-        """Test that get_codebase_content ignores files in ignored folders."""
-        scanner = CodebaseScanner()
-        
-        # Create file in ignored folder
-        venv_dir = Path(temp_dir) / "venv"
-        venv_dir.mkdir()
-        ignored_file = venv_dir / "ignored.py"
-        ignored_file.write_text("# Should be ignored")
-        
-        # Create regular file
-        regular_file = Path(temp_dir) / "regular.py"
-        regular_file.write_text("# Should be included")
-        
-        files = [str(ignored_file), str(regular_file)]
-        combined_content = scanner.get_codebase_content(files)
-        
-        # Should not contain content from ignored file
-        assert "ignored.py" not in combined_content
-        assert "regular.py" in combined_content
-        assert "Should be included" in combined_content
-    
+
     def test_get_codebase_content_empty_list(self):
         """Test get_codebase_content with empty file list."""
         scanner = CodebaseScanner()

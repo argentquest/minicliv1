@@ -12,13 +12,16 @@ import sys
 import time
 import json
 from typing import List, Dict, Any, Optional, Tuple
-from dotenv import load_dotenv
-
 # Import core functionality
 from lazy_file_scanner import CodebaseScanner
-from ai import AIProcessor, AIProviderFactory
-from system_message_manager import system_message_manager
 from logger import get_logger
+from cli_shared import (
+    ConfigurationError,
+    configure_system_prompt,
+    create_ai_processor,
+    load_configuration as load_cli_configuration,
+)
+from file_filters import filter_files
 
 
 class CLIInterface:
@@ -140,112 +143,33 @@ Examples:
 
     def load_configuration(self, args) -> Dict[str, Any]:
         """Load configuration from environment variables and CLI arguments."""
-        # Load environment variables
-        load_dotenv()
-
-        config = {
-            'api_key': os.getenv('API_KEY', ''),
-            'provider': os.getenv('PROVIDER', 'openrouter'),
-            'model': os.getenv('DEFAULT_MODEL', 'openai/gpt-3.5-turbo'),
-            'models': [m.strip() for m in os.getenv('MODELS', '').split(',')
-                       if m.strip()]
-        }
-
-        # Override with CLI arguments if provided
-        if args.api_key:
-            config['api_key'] = args.api_key
-        if args.provider:
-            config['provider'] = args.provider
-        if args.model:
-            config['model'] = args.model
-
-        return config
+        return load_cli_configuration(args.api_key, args.provider, args.model)
 
     def setup_ai_processor(self, config: Dict[str, Any]) -> bool:
         """Set up the AI processor with the given configuration."""
         try:
-            # Create provider instance
-            factory = AIProviderFactory()
-            provider = factory.create_provider(config['provider'],
-                                               config['api_key'])
-
-            # Create AI processor
-            self.ai_processor = AIProcessor(provider)
-
-            # Validate API key
-            if not self.ai_processor.validate_api_key():
-                self.log("ERROR: No API key configured. Please set API_KEY "
-                         "in .env file or use --api-key option.",
-                         force=True)
-                return False
-
-            self.log(f"SUCCESS: AI processor initialized with "
-                     f"{config['provider']} provider")
+            self.ai_processor = create_ai_processor(config['provider'], config['api_key'])
+            self.log(f"SUCCESS: AI processor initialized with {config['provider']} provider")
             return True
-
-        except Exception as e:
-            self.log(f"ERROR: Failed to initialize AI processor: {str(e)}",
-                     force=True)
+        except ConfigurationError as error:
+            self.log(f"ERROR: {error}", force=True)
             return False
 
     def setup_system_prompt(self, system_prompt_name: Optional[str]) -> bool:
         """Set up the system prompt."""
-        if not system_prompt_name:
-            self.log("Using default system prompt")
-            return True
-
-        filename = f"systemmessage_{system_prompt_name}.txt"
-
-        if not os.path.exists(filename):
-            self.log(f"ERROR: System prompt file '{filename}' not found.",
-                     force=True)
-            return False
-
-        success = system_message_manager.set_current_system_message_file(
-            filename)
+        success, message = configure_system_prompt(system_prompt_name)
         if success:
-            self.log(f"SUCCESS: Using system prompt: {system_prompt_name}")
+            self.log(message)
             return True
-        else:
-            self.log(f"ERROR: Failed to load system prompt file '{filename}'.",
-                     force=True)
-            return False
+
+        self.log(f"ERROR: {message}", force=True)
+        return False
 
     def apply_file_filters(self, files: List[str],
                            include_patterns: Optional[str],
                            exclude_patterns: Optional[str]) -> List[str]:
         """Apply include/exclude filters to the file list."""
-        import fnmatch
-
-        filtered_files = files
-
-        # Apply include patterns
-        if include_patterns:
-            patterns = [p.strip() for p in include_patterns.split(',')]
-            included_files = []
-            for pattern in patterns:
-                for file_path in files:
-                    filename = os.path.basename(file_path)
-                    if (fnmatch.fnmatch(filename, pattern) or
-                            fnmatch.fnmatch(file_path, pattern)):
-                        included_files.append(file_path)
-            filtered_files = list(set(included_files))
-
-        # Apply exclude patterns
-        if exclude_patterns:
-            patterns = [p.strip() for p in exclude_patterns.split(',')]
-            excluded_files = []
-            for pattern in patterns:
-                for file_path in filtered_files:
-                    filename = os.path.basename(file_path)
-                    if (fnmatch.fnmatch(filename, pattern) or
-                            fnmatch.fnmatch(file_path, pattern)):
-                        excluded_files.append(file_path)
-
-            filtered_files = [f for f in filtered_files
-                              if f not in excluded_files]
-
-        return filtered_files
+        return filter_files(files, include_patterns, exclude_patterns)
 
     def scan_codebase(self, folder_path: str,
                       include_patterns: Optional[str],

@@ -28,11 +28,13 @@ Architecture:
 """
 
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 import os
+import sys
 import threading
+import time
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 from dotenv import load_dotenv
 
 # Initialize logging first for proper error tracking
@@ -1025,6 +1027,99 @@ class SimpleModernCodeChatApp:
         self.root.mainloop()
 
 
+def force_window_visibility(root: tk.Tk, title: str = "Code Chat AI") -> bool:
+    # Ensure the main window is visible and centered on screen.
+    try:
+        root.title(title)
+        root.attributes('-topmost', True)
+        root.lift()
+        root.focus_force()
+
+        window_width = 1200
+        window_height = 800
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+        center_x = int((screen_width - window_width) / 2)
+        center_y = int((screen_height - window_height) / 2)
+        root.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
+
+        root.update()
+        time.sleep(0.1)
+        root.attributes('-topmost', False)
+        return True
+    except Exception as error:
+        print(f"Warning: Could not force window visibility: {error}", file=sys.stderr)
+        return False
+
+
+def launch_gui(force_visibility: bool = False, verbose: bool = False, legacy_ui: bool = False) -> int:
+    # Launch the GUI application with optional window forcing.
+
+    root: Optional[tk.Tk] = None
+
+    try:
+        if legacy_ui:
+            os.environ['USE_QUESTION_HISTORY_UI'] = 'false'
+
+        if verbose:
+            print("?? Starting Code Chat AI with enhanced UI visibility...")
+
+        root = tk.Tk()
+
+        if force_visibility:
+            force_window_visibility(root, "Code Chat AI - Initializing...")
+        else:
+            root.title("Code Chat AI")
+
+        if verbose:
+            print("? Window visibility forced successfully")
+            print("?? Loading application modules...")
+
+        app = SimpleModernCodeChatApp(root)
+
+        if force_visibility:
+            root.lift()
+            root.focus_force()
+
+        if verbose:
+            print("???  Creating application instance...")
+            print("?? Application initialized successfully")
+            print("?? Window should now be visible and focused")
+
+        app.run()
+        return 0
+
+    except ImportError as error:
+        error_msg = (
+            f"Missing required dependency: {error}\n\n"
+            "Please install dependencies with:\npip install -r requirements.txt"
+        )
+        print(f"ERROR: {error_msg}", file=sys.stderr)
+        if root is not None:
+            try:
+                root.withdraw()
+                messagebox.showerror("Dependency Error", error_msg)
+            except Exception:
+                pass
+        return 1
+
+    except KeyboardInterrupt:
+        print("\nApplication closed by user.")
+        return 1
+
+    except Exception as error:
+        error_msg = f"Failed to start GUI application: {error}"
+        print(f"ERROR: {error_msg}", file=sys.stderr)
+        if root is not None:
+            try:
+                root.withdraw()
+                messagebox.showerror("Startup Error", str(error))
+            except Exception:
+                pass
+        return 1
+
+
+
 def main():
     """Main entry point - handles CLI, Rich CLI, GUI, and Server modes."""
     import sys
@@ -1108,21 +1203,13 @@ def main():
             sys.exit(1)
     else:
         # GUI mode (default)
-        try:
-            # Check for legacy UI flag
-            use_legacy_ui = '--legacy-ui' in sys.argv
-            if use_legacy_ui:
-                sys.argv.remove('--legacy-ui')
-                os.environ['USE_QUESTION_HISTORY_UI'] = 'false'
-            
-            root = tk.Tk()
-            app = SimpleModernCodeChatApp(root)
-            app.run()
-        except KeyboardInterrupt:
-            print("\nApplication closed by user.")
-        except Exception as e:
-            print(f"ERROR: Failed to start GUI application: {str(e)}", file=sys.stderr)
-            sys.exit(1)
+        use_legacy_ui = '--legacy-ui' in sys.argv
+        if use_legacy_ui:
+            sys.argv.remove('--legacy-ui')
+
+        exit_code = launch_gui(force_visibility=False, legacy_ui=use_legacy_ui)
+        if exit_code != 0:
+            sys.exit(exit_code)
 
 
 if __name__ == "__main__":
