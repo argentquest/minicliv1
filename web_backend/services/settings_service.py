@@ -3,7 +3,10 @@ from __future__ import annotations
 
 from typing import Dict, Tuple
 
-from env_manager import env_manager
+from common.env_manager import env_manager
+from common.logger import get_logger
+
+logger = get_logger(__name__)
 from security_utils import SecurityUtils
 from theme import theme_manager
 

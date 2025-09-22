@@ -38,13 +38,13 @@ from typing import List, Optional
 from dotenv import load_dotenv
 
 # Initialize logging first for proper error tracking
-from logger import get_logger, log_performance
+from common.logger import get_logger, log_performance
 
 # Core application models and state management
 from models import AppState, AppConfig, ConversationMessage
 
 # File scanning components for codebase analysis
-from lazy_file_scanner import CodebaseScanner, LazyCodebaseScanner
+from common.lazy_file_scanner import LazyCodebaseScanner
 
 # AI processing and provider management
 from ai import create_ai_processor
@@ -93,8 +93,8 @@ class SimpleModernCodeChatApp:
         self.logger = get_logger("app")
         self.config = AppConfig.get_default()
         self.state = AppState()
-        self.scanner = CodebaseScanner()
-        self.lazy_scanner = None  # Created on-demand for large codebases
+        self.scanner = LazyCodebaseScanner()
+        self.lazy_scanner = self.scanner  # Use the same instance
 
         # Load environment and initialize components
         self.logger.info("Initializing Code Chat application")
@@ -256,8 +256,7 @@ class SimpleModernCodeChatApp:
     
     def _refresh_codebase_lazy(self):
         """Lazy codebase refresh for large projects."""
-        if not self.lazy_scanner:
-            self.lazy_scanner = LazyCodebaseScanner()
+        # lazy_scanner is now the same as scanner
         
         # Start lazy scanning in background
         threading.Thread(target=self._lazy_scan_worker, daemon=True).start()
@@ -848,7 +847,7 @@ class SimpleModernCodeChatApp:
     def _update_scanner_from_settings(self, env_vars):
         """Update scanner configuration from settings."""
         if 'IGNORE_FOLDERS' in env_vars:
-            self.scanner = CodebaseScanner()  # Reinitialize to pick up new ignore folders
+            self.scanner = LazyCodebaseScanner()  # Reinitialize to pick up new ignore folders
             
             # Refresh current directory if one is selected
             if self.state.selected_directory:

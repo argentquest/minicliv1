@@ -13,12 +13,15 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from ai import create_ai_processor
-from lazy_file_scanner import CodebaseScanner, LazyCodebaseScanner
-from logger import get_logger
-from models import AppState, ConversationMessage
+from common.ai import create_ai_processor
+from common.lazy_file_scanner import LazyCodebaseScanner
+from common.logger import get_logger
+from common.models import AppState, ConversationMessage
 from pattern_matcher import pattern_matcher
-from system_message_manager import system_message_manager
+from common.system_message_manager import system_message_manager
+from common.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -45,8 +48,7 @@ class ConversationSession:
     available_models: List[str]
     default_model: str
     app_state: AppState = field(default_factory=AppState)
-    codebase_scanner: CodebaseScanner = field(default_factory=CodebaseScanner)
-    lazy_scanner: LazyCodebaseScanner = field(default_factory=LazyCodebaseScanner)
+    codebase_scanner: LazyCodebaseScanner = field(default_factory=LazyCodebaseScanner)
     selected_directory: str = ""
     selected_files: List[str] = field(default_factory=list)
     logger = get_logger("conversation")
@@ -293,7 +295,7 @@ class ConversationSession:
 
     def _load_files(self, files: List[str]) -> str:
         if len(files) > 50:
-            return self.lazy_scanner.get_codebase_content_lazy(files)
+            return self.codebase_scanner.get_codebase_content_lazy(files)
         return self.codebase_scanner.get_codebase_content(files)
 
     def _process_with_ai(self, question: str, codebase_content: str) -> str:
@@ -353,6 +355,7 @@ class ConversationManager:
         models: List[str],
         default_model: Optional[str] = None,
     ) -> ConversationSession:
+        logger.info(f"Creating conversation session for provider {provider}")
         session_id = str(uuid.uuid4())
         ai_processor = create_ai_processor(api_key=api_key, provider=provider)
         default_model = default_model or (models[0] if models else "")
@@ -365,7 +368,7 @@ class ConversationManager:
         )
         session.set_api_key(api_key)
         self._sessions[session_id] = session
-        self._logger.info("Conversation session created", extra={"session_id": session_id})
+        logger.info(f"Session created: {session_id}")
         return session
 
     def get_session(self, session_id: str) -> ConversationSession:

@@ -77,7 +77,7 @@ flowchart TD
 
 ### 📊 Results Display
 - **New Tab Results**: Analysis results open in separate browser tabs
-- **Rich Formatting**: Beautiful HTML results with syntax highlighting
+- **Rich Markdown Formatting**: GitHub-style rendering for headings, tables, code blocks
 - **Copy to Clipboard**: Easy result sharing and copying
 - **Metadata Display**: Processing time, file counts, and configuration details
 

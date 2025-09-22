@@ -5,9 +5,9 @@ from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
 
-from ai import AIProviderFactory
-from env_manager import env_manager
-from models import ConversationMessage, QuestionStatus
+from common.ai import AIProviderFactory
+from common.env_manager import env_manager
+from common.models import ConversationMessage, QuestionStatus
 from web_backend.schemas import (
     AskQuestionRequest,
     AskQuestionResponse,
@@ -20,6 +20,9 @@ from web_backend.schemas import (
     ExportConversationResponse,
     FileContentRequest,
     FileContentResponse,
+    FolderFileCountRequest,
+    FolderFileCountResponse,
+    FolderInfo,
     ImportConversationRequest,
     SetDirectoryRequest,
     SetDirectoryResponse,
@@ -29,6 +32,7 @@ from web_backend.schemas import (
     SystemPromptResponse,
     ThemeToggleResponse,
     ThemeSetRequest,
+    TopFoldersResponse,
     UpdateApiKeyRequest,
     UpdateFilesRequest,
     UpdateModelRequest,
@@ -37,6 +41,10 @@ from web_backend.services.conversation_service import conversation_manager
 from web_backend.services.file_service import file_service
 from web_backend.services.settings_service import settings_service
 from web_backend.services.system_service import system_message_service
+from common.logger import get_logger
+import markdown2
+
+logger = get_logger(__name__)
 
 router = APIRouter()
 
@@ -47,7 +55,11 @@ router = APIRouter()
 
 def _load_env_defaults() -> tuple[str, str, List[str], str]:
     env_vars = env_manager.load_env_file()
-    provider = env_vars.get("PROVIDER") or env_vars.get("DEFAULT_PROVIDER") or "openrouter"
+    provider = (
+        env_vars.get("PROVIDER")
+        or env_vars.get("DEFAULT_PROVIDER")
+        or "openrouter"
+    )
     models_env = env_vars.get("MODELS")
     if models_env:
         models = [m.strip() for m in models_env.split(",") if m.strip()]
@@ -59,7 +71,10 @@ def _load_env_defaults() -> tuple[str, str, List[str], str]:
             "anthropic/claude-3-haiku",
             "anthropic/claude-3-sonnet",
         ]
-    default_model = env_vars.get("DEFAULT_MODEL") or (models[0] if models else "")
+    default_model = (
+        env_vars.get("DEFAULT_MODEL")
+        or (models[0] if models else "")
+    )
     api_key = env_vars.get("API_KEY", "")
     return api_key, provider, models, default_model
 
@@ -81,10 +96,10 @@ def _session_summary_model(session) -> ConversationSummaryModel:
 def _conversation_state_response(session) -> ConversationCreateResponse:
     summary_model = _session_summary_model(session)
     return ConversationCreateResponse(
-        conversation_id=session.session_id,
+        conversationId=session.session_id,
         provider=session.provider,
         model=summary_model.selected_model,
-        available_models=session.available_models,
+        availableModels=session.available_models,
         summary=summary_model,
     )
 
@@ -98,7 +113,11 @@ def _conversation_state_response(session) -> ConversationCreateResponse:
 def get_providers():
     providers = AIProviderFactory.get_available_providers()
     env_vars = env_manager.load_env_file()
-    default_provider = env_vars.get("PROVIDER") or env_vars.get("DEFAULT_PROVIDER") or "openrouter"
+    default_provider = (
+        env_vars.get("PROVIDER")
+        or env_vars.get("DEFAULT_PROVIDER")
+        or "openrouter"
+    )
     return {"providers": providers, "default": default_provider}
 
 
@@ -107,15 +126,19 @@ def get_models(provider: Optional[str] = None):
     api_key, default_provider, models, default_model = _load_env_defaults()
     provider_name = provider or default_provider
     try:
-        provider_instance = AIProviderFactory.create_provider(provider_name, api_key)
+        provider_instance = AIProviderFactory.create_provider(
+            provider_name, api_key
+        )
         provider_info = provider_instance.get_provider_info()
         models = provider_info.get("models", models)
         default_model = provider_info.get("default_model", default_model)
     except Exception:
         pass
-    return {"models": models, "default": default_model, "provider": provider_name}
-
-
+    return {
+        "models": models,
+        "default": default_model,
+        "provider": provider_name,
+    }
 
 
 @router.get("/meta/ui-defaults")
@@ -153,6 +176,7 @@ def get_ui_defaults():
 
 @router.post("/conversations", response_model=ConversationCreateResponse)
 def create_conversation(request: ConversationCreateRequest):
+    logger.info("Creating new conversation")
     env_api_key, env_provider, models, env_default_model = _load_env_defaults()
     api_key = request.api_key or env_api_key
     provider = request.provider or env_provider
@@ -173,7 +197,10 @@ def create_conversation(request: ConversationCreateRequest):
     return _conversation_state_response(session)
 
 
-@router.get("/conversations/{conversation_id}", response_model=ConversationSummaryModel)
+@router.get(
+    "/conversations/{conversation_id}",
+    response_model=ConversationSummaryModel,
+)
 def get_conversation(conversation_id: str):
     try:
         session = conversation_manager.get_session(conversation_id)
@@ -182,13 +209,19 @@ def get_conversation(conversation_id: str):
     return _session_summary_model(session)
 
 
-@router.delete("/conversations/{conversation_id}", response_model=ConversationIdResponse)
+@router.delete(
+    "/conversations/{conversation_id}",
+    response_model=ConversationIdResponse,
+)
 def delete_conversation(conversation_id: str):
     conversation_manager.drop_session(conversation_id)
-    return ConversationIdResponse(conversation_id=conversation_id)
+    return ConversationIdResponse(conversationId=conversation_id)
 
 
-@router.post("/conversations/{conversation_id}/clear", response_model=ConversationSummaryModel)
+@router.post(
+    "/conversations/{conversation_id}/clear",
+    response_model=ConversationSummaryModel,
+)
 def clear_conversation(conversation_id: str):
     try:
         session = conversation_manager.get_session(conversation_id)
@@ -198,18 +231,29 @@ def clear_conversation(conversation_id: str):
     return _session_summary_model(session)
 
 
-@router.post("/conversations/{conversation_id}/question", response_model=AskQuestionResponse)
+@router.post(
+    "/conversations/{conversation_id}/question",
+    response_model=AskQuestionResponse,
+)
 def ask_question(conversation_id: str, request: AskQuestionRequest):
+    logger.info(f"Asking question in conversation {conversation_id}")
     try:
         session = conversation_manager.get_session(conversation_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
     if request.selected_files is not None:
-        session.update_selected_files(request.selected_files, make_persistent=request.persistent)
+        session.update_selected_files(
+            request.selected_files,
+            make_persistent=request.persistent,
+        )
 
     try:
         result = session.ask_question(request.question)
+        raw_response = result["response"]
+        html_response = markdown2.markdown(raw_response)
+        result["rawResponse"] = raw_response
+        result["response"] = html_response
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
@@ -217,15 +261,19 @@ def ask_question(conversation_id: str, request: AskQuestionRequest):
 
     summary_model = _session_summary_model(session)
     return AskQuestionResponse(
+        rawResponse=result["rawResponse"],
         response=result["response"],
-        processing_time=result["processing_time"],
-        tokens_used=result["tokens_used"],
-        question_index=result["question_index"],
+        processingTime=result["processing_time"],
+        tokensUsed=result["tokens_used"],
+        questionIndex=result["question_index"],
         summary=summary_model,
     )
 
 
-@router.post("/conversations/{conversation_id}/system-prompt", response_model=SystemPromptResponse)
+@router.post(
+    "/conversations/{conversation_id}/system-prompt",
+    response_model=SystemPromptResponse,
+)
 def run_system_prompt(conversation_id: str):
     try:
         session = conversation_manager.get_session(conversation_id)
@@ -242,26 +290,33 @@ def run_system_prompt(conversation_id: str):
     summary_model = _session_summary_model(session)
     return SystemPromptResponse(
         response=result["response"],
-        processing_time=result["processing_time"],
-        tokens_used=result["tokens_used"],
+        processingTime=result["processing_time"],
+        tokensUsed=result["tokens_used"],
         summary=summary_model,
     )
 
 
-@router.post("/conversations/{conversation_id}/files", response_model=ConversationSummaryModel)
+@router.post(
+    "/conversations/{conversation_id}/files",
+    response_model=ConversationSummaryModel,
+)
 def update_files(conversation_id: str, request: UpdateFilesRequest):
     try:
         session = conversation_manager.get_session(conversation_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
-    session.update_selected_files(request.selected_files, make_persistent=request.persistent)
+    session.update_selected_files(
+        request.selected_files,
+        make_persistent=request.persistent,
+    )
     return _session_summary_model(session)
-
-
-
-
-@router.put("/conversations/{conversation_id}/model", response_model=ConversationCreateResponse)
+    
+    
+@router.put(
+    "/conversations/{conversation_id}/model",
+    response_model=ConversationCreateResponse,
+)
 def update_model(conversation_id: str, request: UpdateModelRequest):
     try:
         session = conversation_manager.get_session(conversation_id)
@@ -272,7 +327,10 @@ def update_model(conversation_id: str, request: UpdateModelRequest):
     return _conversation_state_response(session)
 
 
-@router.put("/conversations/{conversation_id}/api-key", response_model=ConversationCreateResponse)
+@router.put(
+    "/conversations/{conversation_id}/api-key",
+    response_model=ConversationCreateResponse,
+)
 def update_api_key(conversation_id: str, request: UpdateApiKeyRequest):
     try:
         session = conversation_manager.get_session(conversation_id)
@@ -282,7 +340,11 @@ def update_api_key(conversation_id: str, request: UpdateApiKeyRequest):
     session.set_api_key(request.api_key)
     return _conversation_state_response(session)
 
-@router.get("/conversations/{conversation_id}/export", response_model=ExportConversationResponse)
+
+@router.get(
+    "/conversations/{conversation_id}/export",
+    response_model=ExportConversationResponse,
+)
 def export_conversation(conversation_id: str):
     try:
         session = conversation_manager.get_session(conversation_id)
@@ -293,7 +355,10 @@ def export_conversation(conversation_id: str):
     return ExportConversationResponse(summary=summary_model)
 
 
-@router.post("/conversations/import", response_model=ConversationCreateResponse)
+@router.post(
+    "/conversations/import",
+    response_model=ConversationCreateResponse,
+)
 def import_conversation(request: ImportConversationRequest):
     env_api_key, env_provider, models, env_default_model = _load_env_defaults()
     api_key = request.api_key or env_api_key
@@ -341,7 +406,10 @@ def import_conversation(request: ImportConversationRequest):
 # ---------------------------------------------------------------------------
 
 
-@router.post("/conversations/{conversation_id}/directory", response_model=SetDirectoryResponse)
+@router.post(
+    "/conversations/{conversation_id}/directory",
+    response_model=SetDirectoryResponse,
+)
 def set_directory(conversation_id: str, request: SetDirectoryRequest):
     try:
         session = conversation_manager.get_session(conversation_id)
@@ -354,18 +422,29 @@ def set_directory(conversation_id: str, request: SetDirectoryRequest):
 
     metadata = file_service.scan_directory(request.path)
     summary_model = _session_summary_model(session)
-    return SetDirectoryResponse(directory=request.path, files=metadata, message=message, summary=summary_model)
+    return SetDirectoryResponse(
+        directory=request.path,
+        files=metadata,
+        message=message,
+        summary=summary_model,
+    )
 
 
 @router.post("/files/scan", response_model=DirectoryScanResponse)
 def scan_directory(request: DirectoryScanRequest):
+    logger.info(f"Scanning directory: {request.path}")
     validation = file_service.validate_directory(request.path)
     if not validation["is_valid"]:
         raise HTTPException(status_code=400, detail=validation["error"])
 
     files = file_service.scan_directory(request.path)
+    logger.info(f"Scan complete: {len(files)} files found")
     tree = file_service.build_directory_tree(request.path)
-    return DirectoryScanResponse(directory=request.path, files=files, tree=tree)
+    return DirectoryScanResponse(
+        directory=request.path,
+        files=files,
+        tree=tree,
+    )
 
 
 @router.post("/files/content", response_model=FileContentResponse)
@@ -374,7 +453,44 @@ def get_file_content(request: FileContentRequest):
         combined = file_service.read_files(request.files)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    return FileContentResponse(combined_content=combined)
+    return FileContentResponse(combinedContent=combined)
+
+
+@router.post("/files/folder-counts", response_model=FolderFileCountResponse)
+def get_folder_file_counts(request: FolderFileCountRequest):
+    validation = file_service.validate_directory(request.path)
+    if not validation["is_valid"]:
+        raise HTTPException(status_code=400, detail=validation["error"])
+
+    counts = file_service.get_folder_file_counts(request.path)
+    folder_infos = [
+        FolderInfo(
+            path=item["path"],
+            fileCount=item["fileCount"]
+        ) for item in counts
+    ]
+    return FolderFileCountResponse(folders=folder_infos)
+
+
+@router.get("/files/top-folders", response_model=TopFoldersResponse)
+def get_top_folders():
+    env_vars = env_manager.load_env_file()
+    code_path = env_vars.get("CODE_PATH", ".")
+    try:
+        import os
+        if os.path.exists(code_path):
+            folders = [
+                d for d in os.listdir(code_path)
+                if os.path.isdir(os.path.join(code_path, d))
+            ]
+            return TopFoldersResponse(folders=folders)
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"CODE_PATH directory not found: {code_path}",
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ---------------------------------------------------------------------------
@@ -424,25 +540,35 @@ def get_system_message(filename: str):
     content = system_message_service.load_message(filename)
     if content is None:
         raise HTTPException(status_code=404, detail="System message not found")
-    return {"filename": filename, "content": content}
+    html_content = markdown2.markdown(content)
+    return {"filename": filename, "content": content, "htmlContent": html_content}
 
 
 @router.put("/system-messages/current")
 def set_current_system_message(request: SystemMessageSetRequest):
     if not system_message_service.set_current(request.filename):
-        raise HTTPException(status_code=400, detail="Unable to set system message")
+        raise HTTPException(
+            status_code=400,
+            detail="Unable to set system message",
+        )
     return {"current": request.filename}
 
 
 @router.post("/system-messages")
 def save_system_message(request: SystemMessageUpdateRequest):
     if not system_message_service.save(request.filename, request.content):
-        raise HTTPException(status_code=400, detail="Unable to save system message")
+        raise HTTPException(
+            status_code=400,
+            detail="Unable to save system message",
+        )
     return {"filename": request.filename}
 
 
 @router.delete("/system-messages/{filename}")
 def delete_system_message(filename: str):
     if not system_message_service.delete(filename):
-        raise HTTPException(status_code=400, detail="Unable to delete system message")
+        raise HTTPException(
+            status_code=400,
+            detail="Unable to delete system message",
+        )
     return {"filename": filename, "deleted": True}

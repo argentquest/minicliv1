@@ -53,8 +53,8 @@ from cli_shared import (
 )
 
 # Import existing core functionality
-from lazy_file_scanner import CodebaseScanner, LazyCodebaseScanner
-from logger import get_logger, log_performance
+from common.lazy_file_scanner import LazyCodebaseScanner
+from common.logger import get_logger, log_performance
 from env_validator import env_validator
 
 # Create CLI application
@@ -85,16 +85,15 @@ class RichCLIInterface:
     def __init__(self):
         self.logger = get_logger("rich_cli")
         self.logger.info("Initializing RichCLIInterface")
-        self.scanner = CodebaseScanner()
-        self.lazy_scanner = None
+        self.scanner = LazyCodebaseScanner()
+        self.lazy_scanner = self.scanner
         self.ai_processor = None
         self.config = {}
         self.logger.info("RichCLIInterface initialized successfully")
         
     def setup_lazy_scanner(self):
         """Initialize lazy scanner for large codebases."""
-        if not self.lazy_scanner:
-            self.lazy_scanner = LazyCodebaseScanner()
+        # lazy_scanner is now the same as scanner
     
     def print_welcome_banner(self):
         """Display a beautiful welcome banner."""

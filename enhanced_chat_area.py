@@ -29,14 +29,16 @@ from models import ConversationMessage, QuestionStatus
 class ChatMessage:
     """Represents a single chat message with metadata."""
     
-    def __init__(self, role: str, content: str, timestamp: str = None, 
-                 tokens_used: int = 0, processing_time: float = 0.0, model_used: str = ""):
+    def __init__(self, role: str, content: str, timestamp: Optional[str] = None,
+                 tokens_used: int = 0, processing_time: float = 0.0, model_used: str = "",
+                 context_files: Optional[List[str]] = None):
         self.role = role  # 'user', 'assistant', 'system'
         self.content = content
         self.timestamp = timestamp or datetime.now().strftime("%H:%M:%S")
         self.tokens_used = tokens_used
         self.processing_time = processing_time
         self.model_used = model_used
+        self.context_files = context_files
         self.is_expanded = False
         self.widget_refs = {}  # Store widget references for updates
 
@@ -44,7 +46,7 @@ class ChatMessage:
 class EnhancedChatArea:
     """Enhanced chat area with traditional bubbles and expandable functionality."""
     
-    def __init__(self, parent, conversation_history: List[ConversationMessage] = None):
+    def __init__(self, parent, conversation_history: Optional[List[ConversationMessage]] = None):
         self.parent = parent
         self.theme = theme_manager.get_current_theme()
         self.conversation_history = conversation_history or []
@@ -111,17 +113,14 @@ class EnhancedChatArea:
             self.chat_messages.append(chat_msg)
             self._create_message_widget(chat_msg)
             
-    def add_message(self, role: str, content: str, tokens_used: int = 0, 
-                   processing_time: float = 0.0, model_used: str = "", 
-                   context_files: List[str] = None):
+    def add_message(self, role: str, content: str, tokens_used: int = 0,
+                   processing_time: float = 0.0, model_used: str = "",
+                   context_files: Optional[List[str]] = None):
         """Add a new message to the chat."""
         chat_msg = ChatMessage(role, content, tokens_used=tokens_used,
-                              processing_time=processing_time, model_used=model_used)
+                              processing_time=processing_time, model_used=model_used,
+                              context_files=context_files)
         
-        # Add context files if provided
-        if context_files:
-            chat_msg.context_files = context_files
-            
         self.chat_messages.append(chat_msg)
         self._create_message_widget(chat_msg)
         
@@ -236,40 +235,53 @@ class EnhancedChatArea:
                                    bg_color=self.theme.colors['bg_secondary'])
         
     def _create_system_message(self, container, chat_msg: ChatMessage):
-        """Create a system message (centered)."""
+        """Create a system message (centered, collapsible by default)."""
         # Centered frame
         center_frame = tk.Frame(container, bg=self.theme.colors['bg_primary'])
         center_frame.pack(expand=True, padx=20)
         
         # System message bubble
-        bubble_frame = tk.Frame(center_frame, bg=self.theme.colors['bg_accent'], 
+        bubble_frame = tk.Frame(center_frame, bg=self.theme.colors['bg_accent'],
                                relief='flat', bd=1)
         bubble_frame.pack(padx=5, pady=2)
         
+        # Message header
+        header_frame = tk.Frame(bubble_frame, bg=self.theme.colors['bg_accent'])
+        header_frame.pack(fill='x', padx=8, pady=(6, 2))
+        
         # System label
-        sys_label = tk.Label(bubble_frame, text="🤖 System", 
-                            bg=self.theme.colors['bg_accent'], 
+        sys_label = tk.Label(header_frame, text="🤖 System",
+                            bg=self.theme.colors['bg_accent'],
                             fg=self.theme.colors['text_primary'],
                             font=('Segoe UI', 9, 'bold'))
-        sys_label.pack(padx=8, pady=(4, 2))
+        sys_label.pack(side='left')
         
-        # Message content (truncated for system messages)
-        content_preview = chat_msg.content[:100] + "..." if len(chat_msg.content) > 100 else chat_msg.content
-        content_label = tk.Label(bubble_frame, text=content_preview,
-                                bg=self.theme.colors['bg_accent'],
-                                fg=self.theme.colors['text_secondary'],
-                                font=('Segoe UI', 8),
-                                wraplength=300, justify='center')
-        content_label.pack(padx=8, pady=(0, 4))
+        # Timestamp
+        time_label = tk.Label(header_frame, text=chat_msg.timestamp,
+                             bg=self.theme.colors['bg_accent'],
+                             fg=self.theme.colors['text_secondary'],
+                             font=('Segoe UI', 8))
+        time_label.pack(side='right')
+        
+        # Message actions for system (expand/collapse, copy)
+        self._create_message_actions(header_frame, chat_msg, is_user=False)
+        
+        # Message content (collapsible)
+        self._create_message_content(bubble_frame, chat_msg,
+                                   fg_color=self.theme.colors['text_primary'],
+                                   bg_color=self.theme.colors['bg_accent'])
         
     def _create_context_files_display(self, parent, chat_msg: ChatMessage, is_user: bool):
         """Create a display for context files."""
+        if chat_msg.context_files is None:
+            return
+            
         context_frame = tk.Frame(parent, bg=parent.cget('bg'))
         context_frame.pack(fill='x', padx=8, pady=(0, 4))
         
         # Context header
         context_label = tk.Label(context_frame, text="📁 Context Files:",
-                               bg=parent.cget('bg'), 
+                               bg=parent.cget('bg'),
                                fg='white' if is_user else self.theme.colors['text_primary'],
                                font=('Segoe UI', 8, 'bold'))
         context_label.pack(anchor='w')
@@ -303,7 +315,7 @@ class EnhancedChatArea:
         # Expand/Collapse button
         expand_btn = tk.Button(
             actions_frame,
-            text="??" if not chat_msg.is_expanded else "??",
+            text="⬇️" if not chat_msg.is_expanded else "⬆️",
             bg=parent.cget('bg'),
             fg='white' if is_user else self.theme.colors['text_primary'],
             font=('Arial', 10),
@@ -317,7 +329,7 @@ class EnhancedChatArea:
         # Copy button
         copy_btn = tk.Button(
             actions_frame,
-            text="??",
+            text="📋",
             bg=parent.cget('bg'),
             fg='white' if is_user else self.theme.colors['text_primary'],
             font=('Arial', 10),
@@ -343,10 +355,10 @@ class EnhancedChatArea:
             extract_btn.pack(side='left', padx=1)
 
         # Regenerate button (only for assistant messages)
-        if not is_user and chat_msg.role == 'assistant':
+        if chat_msg.role == 'assistant':
             regen_btn = tk.Button(
                 actions_frame,
-                text="??",
+                text="🔄",
                 bg=parent.cget('bg'),
                 fg=self.theme.colors['text_primary'],
                 font=('Arial', 10),
@@ -446,7 +458,8 @@ class EnhancedChatArea:
             first_line = snippet.splitlines()[0] if snippet else '(empty fragment)'
             preview_items.append(f"{index}. {language} - {first_line[:60]}")
 
-        list_var = tk.StringVar(value=preview_items)
+        list_var = tk.StringVar()
+        list_var.set('\n'.join(preview_items))
         select_bg = self.theme.colors.get('accent', self.theme.colors.get('bg_accent', '#4d4d4d'))
         listbox = tk.Listbox(
             list_frame,
@@ -574,7 +587,7 @@ class EnhancedChatArea:
         code_lines: List[str] = []
 
         for index, line in enumerate(lines):
-            stripped = line.rstrip('
+            stripped = line.rstrip()
 ')
             is_last_line = index == len(lines) - 1
 
@@ -586,8 +599,7 @@ class EnhancedChatArea:
                     code_language = ''
                     in_code_block = False
                     if not is_last_line:
-                        text_widget.insert(tk.END, '
-')
+                        text_widget.insert(tk.END, '\n')
                 else:
                     code_language = fence[3:].strip().lower()
                     in_code_block = True
@@ -598,8 +610,7 @@ class EnhancedChatArea:
             else:
                 self._insert_markdown_line(text_widget, stripped)
                 if not is_last_line:
-                    text_widget.insert(tk.END, '
-')
+                    text_widget.insert(tk.END, '\n')
 
         if in_code_block:
             self._insert_code_block(text_widget, code_lines, code_language)
@@ -636,11 +647,9 @@ class EnhancedChatArea:
 
     def _insert_markdown_line(self, text_widget: tk.Text, line: str):
         """Render a single non-code markdown line."""
-        stripped = line.strip('
-')
+        stripped = line.strip()
         if not stripped:
-            text_widget.insert(tk.END, '
-')
+            text_widget.insert(tk.END, '\n')
             return
 
         if stripped.startswith('>'):

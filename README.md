@@ -176,7 +176,8 @@ graph TB
 - **Dark/Light Theme Support** - Toggle with one click
 - **Tabbed Conversations** - Manage multiple chat sessions
 - **Responsive Design** - Clean, professional interface
-- **Code Fragment Extraction** - Easily copy code suggestions
+- **Rich Markdown Rendering** - AI responses formatted with GitHub-style Markdown (headings, tables, code blocks)
+- **Code Fragment Extraction** - Easily copy code suggestions with toast notifications
 
 ### 📁 **Smart File Management**
 - **Intelligent File Scanning** - Automatically detects relevant code files

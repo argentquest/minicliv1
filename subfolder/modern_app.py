@@ -7,9 +7,9 @@ import os
 import threading
 from dotenv import load_dotenv
 
-from models import AppState, AppConfig, ConversationMessage
-from file_scanner import CodebaseScanner
-from ai import AIProcessor
+from common.models import AppState, AppConfig, ConversationMessage
+from common.lazy_file_scanner import LazyCodebaseScanner
+from common.ai import AIProcessor
 from theme import theme_manager
 from icons import icon_manager
 from modern_ui import (
@@ -24,7 +24,7 @@ class ModernCodeChatApp:
         self.root = root
         self.config = AppConfig.get_default()
         self.state = AppState()
-        self.scanner = CodebaseScanner()
+        self.scanner = LazyCodebaseScanner()
         
         # Load environment and initialize components
         self._load_environment()

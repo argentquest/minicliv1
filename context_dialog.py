@@ -11,7 +11,7 @@ import os
 
 from theme import theme_manager
 from simple_modern_ui import SimpleModernButton, SimpleModernLabel, SimpleFilesList
-from lazy_file_scanner import CodebaseScanner, LazyCodebaseScanner
+from common.lazy_file_scanner import LazyCodebaseScanner
 
 
 class ContextDialog:
@@ -30,8 +30,8 @@ class ContextDialog:
         self.context_change_callback = context_change_callback
         self.current_context = current_context or []
         self.new_context = []
-        self.scanner = CodebaseScanner()
-        self.lazy_scanner = None
+        self.scanner = LazyCodebaseScanner()
+        self.lazy_scanner = self.scanner
         
         # Dialog window
         self.dialog = None

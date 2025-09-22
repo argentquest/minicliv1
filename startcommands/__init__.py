@@ -8,7 +8,7 @@ of the Code Chat AI application with clear categorization and descriptions.
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from logger import get_logger
+from common.logger import get_logger
 
 # Module metadata
 __version__ = "1.0.0"

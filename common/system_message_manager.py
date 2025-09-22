@@ -3,7 +3,7 @@ System message manager for custom AI system messages.
 """
 import os
 from typing import Optional, List, Dict, Any
-from env_manager import env_manager
+from common.env_manager import env_manager
 
 class SystemMessageManager:
     """Manages system messages from file or default."""

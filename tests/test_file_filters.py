@@ -1,5 +1,5 @@
 """Tests for the file filtering utilities."""
-from file_filters import filter_files
+from common.file_filters import filter_files
 
 
 class TestFilterFiles:

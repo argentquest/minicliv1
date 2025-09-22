@@ -4,6 +4,7 @@ export interface ChatMessage {
   id: string;
   role: ChatRole;
   content: string;
+  rawContent?: string;
   timestamp: string;
   tokensUsed?: number;
   processingTime?: number;
@@ -134,4 +135,9 @@ export interface UpdateFilesResponse extends ConversationSummary {}
 
 export interface ExportConversationResponse {
   summary: ConversationSummary;
+}
+
+
+export interface TopFoldersResponse {
+  folders: string[];
 }

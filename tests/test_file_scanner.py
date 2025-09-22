@@ -5,8 +5,7 @@ import pytest
 import os
 from pathlib import Path
 from unittest.mock import patch
-
-from file_scanner import CodebaseScanner
+from common.lazy_file_scanner import LazyCodebaseScanner
 
 
 class TestCodebaseScanner:
@@ -14,7 +13,7 @@ class TestCodebaseScanner:
     
     def test_init_default_values(self):
         """Test scanner initialization with default values."""
-        scanner = CodebaseScanner()
+        scanner = LazyCodebaseScanner()
         assert '.py' in scanner.supported_extensions
         assert '.env' in scanner.special_files
         assert 'venv' in scanner.ignore_folders
@@ -23,35 +22,35 @@ class TestCodebaseScanner:
     @patch.dict(os.environ, {'IGNORE_FOLDERS': 'node_modules,dist,build'})
     def test_init_custom_ignore_folders(self):
         """Test scanner initialization with custom ignore folders."""
-        scanner = CodebaseScanner()
+        scanner = LazyCodebaseScanner()
         assert 'node_modules' in scanner.ignore_folders
         assert 'dist' in scanner.ignore_folders
         assert 'build' in scanner.ignore_folders
     
     def test_validate_directory_valid(self, temp_dir):
         """Test directory validation with valid directory."""
-        scanner = CodebaseScanner()
+        scanner = LazyCodebaseScanner()
         is_valid, error_msg = scanner.validate_directory(temp_dir)
         assert is_valid is True
         assert error_msg == ""
     
     def test_validate_directory_empty_path(self):
         """Test directory validation with empty path."""
-        scanner = CodebaseScanner()
+        scanner = LazyCodebaseScanner()
         is_valid, error_msg = scanner.validate_directory("")
         assert is_valid is False
         assert "No directory specified" in error_msg
     
     def test_validate_directory_nonexistent(self):
         """Test directory validation with non-existent directory."""
-        scanner = CodebaseScanner()
+        scanner = LazyCodebaseScanner()
         is_valid, error_msg = scanner.validate_directory("/nonexistent/path")
         assert is_valid is False
         assert "Directory does not exist" in error_msg
     
     def test_validate_directory_file_instead_of_dir(self, temp_dir):
         """Test directory validation when path points to a file."""
-        scanner = CodebaseScanner()
+        scanner = LazyCodebaseScanner()
         file_path = Path(temp_dir) / "test_file.txt"
         file_path.write_text("test content")
         
@@ -61,13 +60,13 @@ class TestCodebaseScanner:
     
     def test_scan_directory_empty_dir(self, temp_dir):
         """Test scanning an empty directory."""
-        scanner = CodebaseScanner()
+        scanner = LazyCodebaseScanner()
         files = scanner.scan_directory(temp_dir)
         assert files == []
     
     def test_scan_directory_with_python_files(self, sample_py_files, temp_dir):
         """Test scanning directory with Python files."""
-        scanner = CodebaseScanner()
+        scanner = LazyCodebaseScanner()
         files = scanner.scan_directory(temp_dir)
         
         # Should find Python files and .env file
@@ -81,7 +80,7 @@ class TestCodebaseScanner:
     
     def test_scan_directory_ignores_folders(self, temp_dir):
         """Test that scanner ignores specified folders."""
-        scanner = CodebaseScanner()
+        scanner = LazyCodebaseScanner()
         
         # Create files in ignored folders
         venv_dir = Path(temp_dir) / "venv" / "lib"
@@ -104,14 +103,13 @@ class TestCodebaseScanner:
     
     def test_scan_directory_nonexistent(self):
         """Test scanning non-existent directory."""
-        scanner = CodebaseScanner()
-        with pytest.raises(Exception) as exc_info:
-            scanner.scan_directory("/nonexistent/path")
-        assert "Error scanning directory" in str(exc_info.value)
+        scanner = LazyCodebaseScanner()
+        files = scanner.scan_directory("/nonexistent/path")
+        assert files == []
     
     def test_get_relative_paths(self, temp_dir):
         """Test converting absolute paths to relative paths."""
-        scanner = CodebaseScanner()
+        scanner = LazyCodebaseScanner()
         
         # Create some test files
         file1 = Path(temp_dir) / "file1.py"
@@ -128,7 +126,7 @@ class TestCodebaseScanner:
     
     def test_read_file_content_success(self, temp_dir):
         """Test reading file content successfully."""
-        scanner = CodebaseScanner()
+        scanner = LazyCodebaseScanner()
         test_file = Path(temp_dir) / "test.py"
         test_content = "# Test Python file\nprint('Hello, World!')"
         test_file.write_text(test_content)
@@ -138,13 +136,13 @@ class TestCodebaseScanner:
     
     def test_read_file_content_nonexistent(self):
         """Test reading non-existent file."""
-        scanner = CodebaseScanner()
+        scanner = LazyCodebaseScanner()
         content = scanner.read_file_content("/nonexistent/file.py")
         assert "Error reading file" in content
     
     def test_get_codebase_content(self, temp_dir):
         """Test combining content from multiple files."""
-        scanner = CodebaseScanner()
+        scanner = LazyCodebaseScanner()
         
         # Create test files
         file1 = Path(temp_dir) / "module1.py"
@@ -168,7 +166,7 @@ class TestCodebaseScanner:
 
     def test_get_codebase_content_empty_list(self):
         """Test get_codebase_content with empty file list."""
-        scanner = CodebaseScanner()
+        scanner = LazyCodebaseScanner()
         content = scanner.get_codebase_content([])
         assert content == ""
     
@@ -179,7 +177,7 @@ class TestCodebaseScanner:
     ])
     def test_supported_extensions(self, temp_dir, extension, should_find):
         """Test that scanner only finds supported extensions."""
-        scanner = CodebaseScanner()
+        scanner = LazyCodebaseScanner()
         
         test_file = Path(temp_dir) / f"test{extension}"
         test_file.write_text("test content")
@@ -193,7 +191,7 @@ class TestCodebaseScanner:
     
     def test_special_files(self, temp_dir):
         """Test that scanner finds special files by exact name."""
-        scanner = CodebaseScanner()
+        scanner = LazyCodebaseScanner()
         
         # Create .env file (exact name match)
         env_file = Path(temp_dir) / ".env"
@@ -203,3 +201,49 @@ class TestCodebaseScanner:
         
         assert any(f.endswith(".env") for f in files)
         assert ".env" in [Path(f).name for f in files]
+
+    def test_gitignore_exclusions(self, temp_dir):
+        """Test that .gitignore patterns are respected and files are omitted."""
+        scanner = LazyCodebaseScanner()
+        
+        # Create .gitignore with exclusion patterns
+        gitignore = Path(temp_dir) / ".gitignore"
+        gitignore.write_text(
+            "# Ignore env files\n"
+            ".env\n"
+            "# Ignore cache\n"
+            "__pycache__/\n"
+            "htmlcov/\n"
+        )
+        
+        # Create files that should be excluded
+        env_file = Path(temp_dir) / ".env"
+        env_file.write_text("SECRET=123")
+        
+        cache_dir = Path(temp_dir) / "__pycache__" / "module.pyc"
+        cache_dir.parent.mkdir()
+        cache_file = cache_dir
+        cache_file.write_text("cache data")
+        
+        htmlcov_dir = Path(temp_dir) / "htmlcov" / "index.html"
+        htmlcov_dir.parent.mkdir(parents=True)
+        htmlcov_file = htmlcov_dir
+        htmlcov_file.write_text("<html></html>")
+        
+        # Create a file that should NOT be excluded
+        include_file = Path(temp_dir) / "main.py"
+        include_file.write_text("print('included')")
+        
+        # Scan the directory
+        files = scanner.scan_directory(temp_dir)
+        
+        # Verify excluded files are NOT in results
+        excluded_paths = [str(env_file), str(cache_file), str(htmlcov_file)]
+        for excluded in excluded_paths:
+            assert excluded not in files, f"Excluded file {excluded} was found in scan"
+        
+        # Verify included file IS in results
+        assert str(include_file) in files, "Included file main.py was not found"
+        
+        # Also verify .gitignore itself is excluded (hardcoded)
+        assert str(gitignore) not in files, ".gitignore was found in scan"

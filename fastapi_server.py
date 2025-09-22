@@ -39,13 +39,15 @@ from pydantic import BaseModel, Field
 import uvicorn
 
 # Import local modules
-from ai import create_ai_processor, AIProviderFactory
-from file_scanner import CodebaseScanner
-from lazy_file_scanner import LazyCodebaseScanner
-from file_filters import filter_files
-from env_manager import EnvManager
-from logger import get_logger
+from common.ai import create_ai_processor, AIProviderFactory
+from common.lazy_file_scanner import LazyCodebaseScanner
+from common.file_filters import filter_files
+from common.env_manager import EnvManager
+from common.logger import get_logger
 from web_backend.api import router as web_router
+from common.logger import get_logger
+
+logger = get_logger(__name__)
 
 # Initialize logger
 logger = get_logger(__name__)
@@ -120,10 +122,11 @@ def initialize_components():
     """Initialize AI processor and scanners."""
     global ai_processor, scanner, lazy_scanner
 
+    logger.info("Initializing FastAPI components")
     try:
         # Initialize scanners
-        scanner = CodebaseScanner()
-        lazy_scanner = LazyCodebaseScanner()
+        scanner = LazyCodebaseScanner()
+        logger.info("Scanners initialized successfully")
 
         # Get API key from environment
         env_vars = env_manager.load_env_file()
@@ -218,6 +221,7 @@ async def get_system_prompts():
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze_code(request: AnalysisRequest):
     """Analyze codebase with AI."""
+    logger.info(f"Starting analysis for directory: {request.folder}")
     start_time = datetime.now()
 
     try:
@@ -243,6 +247,7 @@ async def analyze_code(request: AnalysisRequest):
         # Scan directory for files
         logger.info(f"Scanning directory: {request.folder}")
         files = scanner.scan_directory(request.folder)
+        logger.info(f"Found {len(files)} files before filtering")
 
         if not files:
             raise HTTPException(status_code=400, detail="No supported files found in directory")
@@ -270,7 +275,7 @@ async def analyze_code(request: AnalysisRequest):
 
             files = filtered_files
 
-        logger.info(f"Processing {len(files)} files")
+        logger.info(f"Processing {len(files)} files after filtering")
 
         # Get codebase content
         codebase_content = scanner.get_codebase_content(files)

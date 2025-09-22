@@ -8,15 +8,20 @@ type ModalProps = {
   children: ReactNode;
   footer?: ReactNode;
   width?: string;
+  height?: string;
   style?: CSSProperties;
 };
 
-export function Modal({ title, isOpen, onClose, children, footer, width, style }: ModalProps) {
+export function Modal({ title, isOpen, onClose, children, footer, width, height, style }: ModalProps) {
   if (!isOpen) {
     return null;
   }
 
-  const modalStyle = width ? { width, ...style } : style;
+  const modalStyle = {
+    width,
+    height,
+    ...style
+  };
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">

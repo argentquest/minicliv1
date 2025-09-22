@@ -3,7 +3,10 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional
 
-from system_message_manager import system_message_manager
+from common.system_message_manager import system_message_manager
+from common.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class SystemMessageService:
@@ -13,7 +16,10 @@ class SystemMessageService:
         return system_message_manager.get_system_message_files_info()
 
     def get_current_file(self) -> str:
-        return system_message_manager.current_message_file
+        logger.info("Getting current system message file")
+        current_file = system_message_manager.current_message_file
+        logger.info(f"Current system message: {current_file}")
+        return current_file
 
     def load_message(self, filename: str) -> Optional[str]:
         return system_message_manager.load_custom_system_message(filename)

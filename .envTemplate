@@ -197,3 +197,10 @@ API_HOST="0.0.0.0"
 DIR_SAVE="results"
 
 # =============================================================================
+# =============================================================================
+# 🔒 SSL CONFIGURATION
+# =============================================================================
+
+# SSL validation for API calls (true/false; default: true for security)
+# Set to false only for development with self-signed certificates
+VALIDATE_SSL="true"

@@ -9,7 +9,7 @@ and detailed descriptions.
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from logger import get_logger
+from common.logger import get_logger
 from typing import List, Optional
 from rich.console import Console
 from rich.table import Table

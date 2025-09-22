@@ -10,7 +10,7 @@ It simply imports and runs the main function from main.py.
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from logger import get_logger
+from common.logger import get_logger
 from .main import main
 
 # Get logger from the startcommands module

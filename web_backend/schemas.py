@@ -67,6 +67,7 @@ class AskQuestionRequest(BaseModel):
 
 
 class AskQuestionResponse(BaseModel):
+    rawResponse: str = Field(alias="rawResponse")
     response: str
     processing_time: float = Field(alias="processingTime")
     tokens_used: int = Field(alias="tokensUsed")
@@ -176,3 +177,20 @@ class UpdateApiKeyRequest(BaseModel):
     api_key: str = Field(alias="apiKey")
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class FolderInfo(BaseModel):
+    path: str
+    fileCount: int
+
+
+class FolderFileCountRequest(BaseModel):
+    path: str
+
+
+class FolderFileCountResponse(BaseModel):
+    folders: List[FolderInfo]
+
+
+class TopFoldersResponse(BaseModel):
+    folders: List[str]

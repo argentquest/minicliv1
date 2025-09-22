@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch, Mock
 
-from lazy_file_scanner import LazyCodebaseScanner, FileInfo, CodebaseScanner
+from common.lazy_file_scanner import LazyCodebaseScanner, FileInfo
 
 
 class TestFileInfo:
@@ -419,8 +419,8 @@ class TestLazyScannerIntegration:
             lazy_files.extend(batch)
         lazy_scan_time = time.time() - start_time
         
-        # Test regular scanner
-        regular_scanner = CodebaseScanner()
+        # Test LazyCodebaseScanner (no separate regular)
+        regular_scanner = LazyCodebaseScanner()
         
         start_time = time.time()
         regular_files = regular_scanner.scan_directory(temp_dir)

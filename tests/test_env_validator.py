@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from env_validator import EnvValidator, ValidationResult, ValidationRule, env_validator
+from common.env_validator import EnvValidator, ValidationResult, ValidationRule, env_validator
 
 
 class TestValidationRule:

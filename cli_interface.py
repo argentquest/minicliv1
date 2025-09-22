@@ -13,8 +13,8 @@ import time
 import json
 from typing import List, Dict, Any, Optional, Tuple
 # Import core functionality
-from lazy_file_scanner import CodebaseScanner
-from logger import get_logger
+from common.lazy_file_scanner import LazyCodebaseScanner
+from common.logger import get_logger
 from cli_shared import (
     ConfigurationError,
     configure_system_prompt,
@@ -29,7 +29,7 @@ class CLIInterface:
 
     def __init__(self):
         """Initialize the CLI interface."""
-        self.scanner = CodebaseScanner()
+        self.scanner = LazyCodebaseScanner()
         self.ai_processor = None
         self.verbose = False
         self.logger = get_logger("cli")

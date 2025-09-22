@@ -9,8 +9,8 @@ import os
 from pathlib import Path
 from unittest.mock import patch, Mock
 
-from file_lock import (
-    FileLock, FileLockError, safe_file_operation, 
+from common.file_lock import (
+    FileLock, FileLockError, safe_file_operation,
     safe_json_save, safe_json_load, cleanup_stale_locks
 )
 

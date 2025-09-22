@@ -36,10 +36,11 @@ Security:
 - Secure error message sanitization
 - Provider-specific authentication handling
 """
+import os
 import time
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Callable, Optional, Tuple
-from system_message_manager import system_message_manager
+from .system_message_manager import system_message_manager
 from security_utils import SecurityUtils
 
 
@@ -221,11 +222,13 @@ class BaseAIProvider(ABC):
             
             while retry_count < max_retries:
                 try:
+                    verify_ssl = os.getenv('VALIDATE_SSL', 'true').lower() == 'true'
                     response = requests.post(
-                        self.config.api_url, 
-                        headers=headers, 
+                        self.config.api_url,
+                        headers=headers,
                         json=data,
-                        timeout=timeout
+                        timeout=timeout,
+                        verify=verify_ssl
                     )
                     
                     if response.status_code != 200:

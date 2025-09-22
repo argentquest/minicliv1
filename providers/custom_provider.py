@@ -37,8 +37,9 @@ Error Handling:
 This provider is designed to be easily extended and customized for different
 AI services while maintaining compatibility with the BaseAIProvider interface.
 """
+import os
 from typing import Dict, Any, List, Tuple
-from base_ai import BaseAIProvider, AIProviderConfig
+from common.base_ai import BaseAIProvider, AIProviderConfig
 
 
 class CustomProvider(BaseAIProvider):
@@ -217,10 +218,12 @@ class CustomProvider(BaseAIProvider):
             start_time = datetime.now()
 
             # Make a simple test request (you might need to adjust this based on the API)
+            verify_ssl = os.getenv('VALIDATE_SSL', 'true').lower() == 'true'
             response = requests.get(
                 self.custom_config["api_url"].replace("/chat/completions", "/models"),
                 headers=headers,
-                timeout=self.custom_config["request_timeout"]
+                timeout=self.custom_config["request_timeout"],
+                verify=verify_ssl
             )
 
             end_time = datetime.now()

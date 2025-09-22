@@ -23,6 +23,10 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
         Use the context panel to set directories or individual files, run quick commands from the toolbar, and export
         conversations when you are ready to share results with your team.
       </p>
+      <p>
+        Created by <a href="https://github.com/argentquest" target="_blank" rel="noopener noreferrer">Eric Silver</a> of Argent Quest Inc.
+    
+      </p>
       <p className="muted" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <ExternalLink size={16} /> Refer to README.md for setup, or CLI_USAGE.md for offline workflows.
       </p>

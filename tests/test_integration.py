@@ -7,10 +7,10 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch, Mock
 
-from models import AppState, ConversationMessage
-from file_scanner import CodebaseScanner  
-from ai import AIProcessor
-from env_manager import EnvManager
+from common.models import AppState, ConversationMessage
+from common.lazy_file_scanner import LazyCodebaseScanner as CodebaseScanner
+from common.ai import AIProcessor
+from common.env_manager import EnvManager
 
 
 class TestEndToEndWorkflows:
@@ -49,7 +49,7 @@ class TestEndToEndWorkflows:
         with patch('system_message_manager.system_message_manager') as mock_manager:
             mock_manager.get_system_message.return_value = "You are a helpful assistant."
 
-            from ai import AIProviderFactory
+            from common.ai import AIProviderFactory
             factory = AIProviderFactory()
             provider = factory.create_provider("openrouter", "test-key")
             processor = AIProcessor(provider)
@@ -148,7 +148,7 @@ TOOL_TEST=pytest -v --tb=short
 
                 # Step 3: Initialize components with environment config
                 scanner = CodebaseScanner()
-                from ai import AIProviderFactory
+                from common.ai import AIProviderFactory
                 factory = AIProviderFactory()
                 provider = factory.create_provider("openrouter", env_vars['API_KEY'])
                 processor = AIProcessor(provider)
@@ -184,7 +184,7 @@ TOOL_TEST=pytest -v --tb=short
         with patch('system_message_manager.system_message_manager') as mock_manager:
             mock_manager.get_system_message.return_value = "You are a helpful assistant."
 
-            from ai import AIProviderFactory
+            from common.ai import AIProviderFactory
             factory = AIProviderFactory()
             provider = factory.create_provider("openrouter", "test-key")
             processor = AIProcessor(provider)
@@ -237,7 +237,7 @@ TOOL_TEST=pytest -v --tb=short
     @pytest.mark.integration
     def test_provider_switching_workflow(self, mock_requests_post):
         """Test switching between AI providers."""
-        from ai import AIProviderFactory
+        from common.ai import AIProviderFactory
         factory = AIProviderFactory()
         provider = factory.create_provider("openrouter", "test-key")
         processor = AIProcessor(provider)
@@ -281,7 +281,7 @@ TOOL_TEST=pytest -v --tb=short
         assert "does not exist" in error_msg
         
         # Test 2: Missing API key handling
-        from ai import AIProviderFactory
+        from common.ai import AIProviderFactory
         factory = AIProviderFactory()
         provider = factory.create_provider("openrouter", "")
         processor = AIProcessor(provider)

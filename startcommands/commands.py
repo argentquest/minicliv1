@@ -8,7 +8,7 @@ categories, and execution details.
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from logger import get_logger
+from common.logger import get_logger
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional, Callable
 import subprocess

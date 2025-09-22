@@ -2,7 +2,7 @@
 Tachyon AI provider implementation.
 """
 from typing import Dict, Any, List, Tuple
-from base_ai import BaseAIProvider, AIProviderConfig
+from common.base_ai import BaseAIProvider, AIProviderConfig
 
 
 class TachyonProvider(BaseAIProvider):

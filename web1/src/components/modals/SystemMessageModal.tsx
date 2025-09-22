@@ -1,15 +1,17 @@
-import type { ChangeEvent } from 'react';
-import { BookOpen } from 'lucide-react';
+import React, { useState, type ChangeEvent } from 'react';
+import { BookOpen, Eye, EyeOff } from 'lucide-react';
 
 import { ActionButton } from '../ActionButton';
 import type { SystemMessageRecord } from '../../types';
 import { Modal } from './Modal';
+import ReactMarkdown from 'react-markdown';
 
 type SystemMessageModalProps = {
   isOpen: boolean;
   records: SystemMessageRecord[];
   selectedId: string;
   preview: string;
+  htmlPreview: string;
   isLoading: boolean;
   error: string | null;
   onClose: () => void;
@@ -22,14 +24,24 @@ export function SystemMessageModal({
   records,
   selectedId,
   preview,
+  htmlPreview,
   isLoading,
   error,
   onClose,
   onSelect,
   onApply,
 }: SystemMessageModalProps) {
+  const [showMarkdown, setShowMarkdown] = useState(false);
   const handleSelectionChange = (event: ChangeEvent<HTMLInputElement>) => {
     onSelect(event.target.value);
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(preview);
+  };
+
+  const toggleMarkdown = () => {
+    setShowMarkdown(!showMarkdown);
   };
 
   const footer = (
@@ -95,12 +107,35 @@ export function SystemMessageModal({
 
       <div className="form-group">
         <label htmlFor="system-message-preview">Preview</label>
-        <textarea
-          id="system-message-preview"
-          className="system-message-content"
-          value={isLoading ? 'Loading preview...' : preview}
-          readOnly
-        />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <span></span>
+          <button
+            onClick={toggleMarkdown}
+            style={{ padding: '4px', border: 'none', background: 'none', cursor: 'pointer' }}
+            title={showMarkdown ? "Show plain text" : "Format with Markdown"}
+          >
+            {showMarkdown ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        </div>
+        {showMarkdown ? (
+          <div style={{
+            background: 'var(--bg-secondary)',
+            padding: '12px',
+            borderRadius: '4px',
+            overflow: 'auto',
+            lineHeight: '1.6',
+            height: '300px'
+          }}>
+            <div dangerouslySetInnerHTML={{ __html: htmlPreview }} />
+          </div>
+        ) : (
+          <textarea
+            id="system-message-preview"
+            className="system-message-content"
+            value={isLoading ? 'Loading preview...' : preview}
+            readOnly
+          />
+        )}
       </div>
 
       <p className="muted" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

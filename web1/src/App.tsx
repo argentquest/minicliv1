@@ -197,6 +197,7 @@ function App() {
   const [systemMessageModalOpen, setSystemMessageModalOpen] = useState(false);
   const [systemMessageSelection, setSystemMessageSelection] = useState('');
   const [systemMessagePreview, setSystemMessagePreview] = useState('');
+  const [systemMessageHtmlPreview, setSystemMessageHtmlPreview] = useState('');
   const [systemMessageLoading, setSystemMessageLoading] = useState(false);
   const [systemMessageError, setSystemMessageError] = useState<string | null>(null);
 
@@ -460,21 +461,6 @@ function App() {
     }
   }, [themeName, updateStatus]);
 
-  const handleOpenContext = useCallback(() => {
-    const tab = activeTab;
-    if (!tab) {
-      updateStatus('Create a conversation before setting context.', 'warning');
-      return;
-    }
-    setContextDirectory(tab.summary.selectedDirectory || '');
-    setContextFiles([]);
-    setContextSelectedFiles(tab.summary.selectedFiles);
-    setContextPersistent(tab.summary.persistentFiles.length > 0);
-    setContextMessage('');
-    setContextError(null);
-    setContextModalOpen(true);
-  }, [activeTab, updateStatus]);
-
   const handleLoadDirectory = useCallback(async () => {
     const tab = activeTab;
     if (!tab) {
@@ -502,6 +488,24 @@ function App() {
       setContextLoading(false);
     }
   }, [activeTab, contextDirectory, updateStatus, updateTabSummaryState]);
+
+  const handleOpenContext = useCallback(async () => {
+    const tab = activeTab;
+    if (!tab) {
+      updateStatus('Create a conversation before setting context.', 'warning');
+      return;
+    }
+    const dir = tab.summary.selectedDirectory || '';
+    setContextDirectory(dir);
+    setContextSelectedFiles(tab.summary.selectedFiles);
+    setContextPersistent(tab.summary.persistentFiles.length > 0);
+    setContextMessage('');
+    setContextError(null);
+    setContextModalOpen(true);
+    if (dir) {
+      await handleLoadDirectory();
+    }
+  }, [activeTab, updateStatus, handleLoadDirectory]);
 
   const handleCloseContextModal = useCallback(() => {
     setContextModalOpen(false);
@@ -702,6 +706,7 @@ function App() {
       try {
         const result = await fetchSystemMessageContent(systemMessageSelection);
         setSystemMessagePreview(result.content);
+        setSystemMessageHtmlPreview(result.htmlContent);
       } catch (error) {
         setSystemMessageError(String(error));
       } finally {
@@ -857,6 +862,7 @@ function App() {
         ref={fileInputRef}
         accept="application/json"
         style={{ display: 'none' }}
+        title="Import conversation JSON file"
         onChange={handleHistoryFileChange}
       />
 
@@ -882,6 +888,7 @@ function App() {
         records={systemMessageRecords}
         selectedId={systemMessageSelection}
         preview={systemMessagePreview}
+        htmlPreview={systemMessageHtmlPreview}
         isLoading={systemMessageLoading}
         error={systemMessageError}
         onClose={handleSystemMessageModalClose}

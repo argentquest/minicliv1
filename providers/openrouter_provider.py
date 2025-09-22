@@ -39,7 +39,7 @@ OpenRouter-specific response formats, token usage extraction, and error
 handling while maintaining compatibility with the standard AI provider interface.
 """
 from typing import Dict, Any, List, Tuple
-from base_ai import BaseAIProvider, AIProviderConfig
+from common.base_ai import BaseAIProvider, AIProviderConfig
 
 
 class OpenRouterProvider(BaseAIProvider):

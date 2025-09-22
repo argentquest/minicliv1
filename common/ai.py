@@ -42,7 +42,7 @@ Usage:
     )
 """
 from typing import List, Dict, Any, Callable, Optional
-from base_ai import BaseAIProvider
+from .base_ai import BaseAIProvider
 from providers.openrouter_provider import OpenRouterProvider
 from providers.tachyon_provider import TachyonProvider
 from providers.custom_provider import CustomProvider

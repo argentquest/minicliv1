@@ -70,6 +70,10 @@ graph TB
 
 ### 1. Provider Pattern
 
+**Recent Updates**:
+- Fixed attribute reference in conversation_service.py (self.lazy_scanner to self.codebase_scanner)
+- Enhanced frontend with Markdown rendering for AI responses using react-markdown and GitHub CSS
+
 **Purpose**: Enable seamless integration of multiple AI services through a consistent interface.
 
 **Implementation**: [`BaseAIProvider`](base_ai.py:23)

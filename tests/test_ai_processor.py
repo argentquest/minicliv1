@@ -6,8 +6,8 @@ from unittest.mock import Mock, patch, MagicMock
 import requests
 import os
 
-from ai import AIProcessor, AIProviderFactory
-from base_ai import BaseAIProvider, AIProviderConfig
+from common.ai import AIProcessor, AIProviderFactory
+from common.base_ai import BaseAIProvider, AIProviderConfig
 from providers.openrouter_provider import OpenRouterProvider
 from providers.tachyon_provider import TachyonProvider
 

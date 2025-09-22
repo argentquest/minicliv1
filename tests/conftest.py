@@ -7,10 +7,10 @@ import os
 from unittest.mock import Mock, MagicMock, patch
 from pathlib import Path
 
-from models import AppConfig, AppState, ConversationMessage
-from file_scanner import CodebaseScanner
-from ai import AIProcessor
-from env_manager import EnvManager
+from common.models import AppConfig, AppState, ConversationMessage
+from common.lazy_file_scanner import LazyCodebaseScanner
+from common.ai import AIProcessor
+from common.env_manager import EnvManager
 
 
 @pytest.fixture

@@ -92,9 +92,9 @@ Code Chat with AI provides multiple interface modes to suit different user prefe
 - Click **Send Question** or press Enter
 
 #### Step 6: Review AI Response
-- AI response appears in the response area
+- AI response appears in the response area with rich Markdown formatting (bold, italics, headings, tables, code blocks)
 - Code snippets are syntax-highlighted
-- Use **📋 Code Fragments** button to extract code blocks
+- Use **📋 Code Fragments** button to extract and copy code blocks with confirmation toast
 - Responses include token usage and processing time
 
 ### Advanced Features

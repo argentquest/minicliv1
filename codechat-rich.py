@@ -48,10 +48,9 @@ import typer
 
 # Local imports
 from ai import create_ai_processor, AIProviderFactory
-from file_scanner import CodebaseScanner
-from lazy_file_scanner import LazyCodebaseScanner
+from common.lazy_file_scanner import LazyCodebaseScanner
 from env_manager import EnvManager
-from logger import get_logger
+from common.logger import get_logger
 
 # Initialize Rich console
 console = Console()
@@ -76,7 +75,7 @@ def initialize_components():
 
     try:
         # Initialize scanners
-        scanner = CodebaseScanner()
+        scanner = LazyCodebaseScanner()
 
         # Get API key from environment
         env_vars = env_manager.load_env_file()

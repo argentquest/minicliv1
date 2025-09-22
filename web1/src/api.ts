@@ -218,8 +218,8 @@ export async function setSystemMessage(filename: string, signal?: AbortSignal): 
 export async function fetchSystemMessageContent(
   filename: string,
   signal?: AbortSignal,
-): Promise<{ filename: string; content: string }> {
-  return request<{ filename: string; content: string }>(`/system-messages/${encodeURIComponent(filename)}`, {
+): Promise<{ filename: string; content: string; htmlContent: string }> {
+  return request<{ filename: string; content: string; htmlContent: string }>(`/system-messages/${encodeURIComponent(filename)}`, {
     method: 'GET',
     signal,
   });
@@ -250,4 +250,14 @@ export async function deleteSystemMessage(
 export async function downloadFile(url: string, signal?: AbortSignal): Promise<Blob> {
   const response = await fetch(url, { signal });
   return handleResponse<Blob>(response);
+}
+
+
+export interface TopFoldersResponse {
+  folders: string[];
+}
+
+
+export async function getTopFolders(signal?: AbortSignal): Promise<TopFoldersResponse> {
+  return request<TopFoldersResponse>('/files/top-folders', { signal });
 }
