@@ -35,7 +35,7 @@ export function ChatView({ messages }: ChatViewProps) {
       const updated = { ...prev };
       messages.forEach((message) => {
         if (updated[message.id] === undefined) {
-          updated[message.id] = false;
+          updated[message.id] = true;
         }
       });
       return updated;
@@ -43,7 +43,7 @@ export function ChatView({ messages }: ChatViewProps) {
   }, [messages]);
 
   const hasCodeFragments = (message: ChatMessage): boolean => {
-    const text = message.rawContent || message.content;
+    const text = message.rawMarkdown || message.content;
     return /```[\s\S]*?```/.test(text);
   };
 
@@ -116,8 +116,8 @@ export function ChatView({ messages }: ChatViewProps) {
             <article key={message.id} className={`chat-message ${roleClass}`}>
               <header className="chat-message__header">
                 <div className="chat-message__header-info">
-                  <strong>{ROLE_LABEL[message.role]}</strong>
-                  <span>{message.timestamp}</span>
+                  <strong title={`${ROLE_LABEL[message.role]} message`}>{ROLE_LABEL[message.role]}</strong>
+                  <span title="Message timestamp">{message.timestamp}</span>
                 </div>
                 <div className="chat-message__actions">
                   {message.role === 'assistant' && hasCodeFragments(message) && (
@@ -142,8 +142,8 @@ export function ChatView({ messages }: ChatViewProps) {
                         e.stopPropagation();
                         toggleMarkdown(message.id);
                       }}
-                      title={markdownToggles[message.id] ? 'Show plain text' : 'Show formatted Markdown'}
-                      aria-label={markdownToggles[message.id] ? 'Show plain text' : 'Show formatted Markdown'}
+                      title={markdownToggles[message.id] ? 'Show raw Markdown' : 'Show formatted HTML'}
+                      aria-label={markdownToggles[message.id] ? 'Show raw Markdown' : 'Show formatted HTML'}
                     >
                       {markdownToggles[message.id] ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -151,6 +151,7 @@ export function ChatView({ messages }: ChatViewProps) {
                   <button
                     type="button"
                     className="chat-message__toggle"
+                    title={isCollapsed ? 'Expand message' : 'Collapse message'}
                     aria-label={isCollapsed ? 'Expand message' : 'Collapse message'}
                     aria-expanded={!isCollapsed}
                     onClick={() => toggleCollapse(message.id)}
@@ -169,7 +170,7 @@ export function ChatView({ messages }: ChatViewProps) {
                       markdownToggles[message.id] ? (
                         <div dangerouslySetInnerHTML={{ __html: message.content }} />
                       ) : (
-                        <div>{stripHtml(message.content)}</div>
+                        <div>{message.rawMarkdown || stripHtml(message.content)}</div>
                       )
                     ) : (
                       <div>{message.content}</div>
@@ -177,13 +178,29 @@ export function ChatView({ messages }: ChatViewProps) {
                   </div>
                   
                   {badgeParts.length > 0 ? (
-                    <div className="chat-message__meta">{badgeParts.join(' | ')}</div>
+                    <div className="chat-message__meta">
+                      {badgeParts.map((badge, index) => {
+                        let title = '';
+                        if (badge.includes('tokens')) {
+                          title = 'Tokens used in response generation';
+                        } else if (badge.includes('s')) {
+                          title = 'Processing time';
+                        } else {
+                          title = 'Model used';
+                        }
+                        return (
+                          <span key={index} title={title} className="chat-message__badge">
+                            {badge}
+                          </span>
+                        );
+                      })}
+                    </div>
                   ) : null}
                   
                   {message.contextFiles && message.contextFiles.length > 0 ? (
                     <div className="chat-context-files">
                       {message.contextFiles.map((file) => (
-                        <span key={file} className="chat-context-chip">
+                        <span key={file} className="chat-context-chip" title={`Context file: ${file}`}>
                           {file}
                         </span>
                       ))}

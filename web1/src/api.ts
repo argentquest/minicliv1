@@ -6,6 +6,7 @@ import type {
   ConversationSummary,
   ExportConversationResponse,
   SetDirectoryResponse,
+  SettingsResponse,
   SystemPromptResponse,
   UiDefaultsResponse,
 } from './types';
@@ -260,4 +261,19 @@ export interface TopFoldersResponse {
 
 export async function getTopFolders(signal?: AbortSignal): Promise<TopFoldersResponse> {
   return request<TopFoldersResponse>('/files/top-folders', { signal });
+}
+
+export async function getSettings(signal?: AbortSignal): Promise<SettingsResponse> {
+  return request<SettingsResponse>('/settings', { signal });
+}
+
+export async function updateSettingsEnv(
+  updates: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<{ [key: string]: boolean }> {
+  return request<{ [key: string]: boolean }>('/settings/env', {
+    method: 'PUT',
+    body: { updates },
+    signal,
+  });
 }

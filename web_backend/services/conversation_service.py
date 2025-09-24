@@ -19,7 +19,9 @@ from common.logger import get_logger
 from common.models import AppState, ConversationMessage
 from pattern_matcher import pattern_matcher
 from common.system_message_manager import system_message_manager
+from common.env_manager import env_manager
 from common.logger import get_logger
+import markdown2
 
 logger = get_logger(__name__)
 
@@ -192,8 +194,10 @@ class ConversationSession:
             model_used=self.app_state.selected_model,
         )
 
+        html_response = markdown2.markdown(response_text, extras=['fenced-code-blocks', 'tables', 'codehilite'])
         return {
-            "response": response_text,
+            "response": html_response,
+            "rawMarkdown": response_text,
             "processing_time": processing_time,
             "tokens_used": tokens_used,
             "question_index": question_index,
@@ -223,8 +227,10 @@ class ConversationSession:
 
         self._update_system_prompt_history(response_text)
 
+        html_response = markdown2.markdown(response_text, extras=['fenced-code-blocks', 'tables', 'codehilite'])
         return {
-            "response": response_text,
+            "response": html_response,
+            "rawMarkdown": response_text,
             "processing_time": processing_time,
             "tokens_used": tokens_used,
         }
@@ -266,8 +272,6 @@ class ConversationSession:
     # ------------------------------------------------------------------
     def _is_tool_command(self, question: str) -> bool:
         try:
-            from env_manager import env_manager
-
             env_vars = env_manager.load_env_file()
             tool_vars = {key: value for key, value in env_vars.items() if key.startswith("TOOL")}
             return pattern_matcher.is_tool_command(question, tool_vars, threshold=0.5)

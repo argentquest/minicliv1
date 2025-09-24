@@ -5,10 +5,10 @@ from typing import Dict, Tuple
 
 from common.env_manager import env_manager
 from common.logger import get_logger
+from security_utils import SecurityUtils
+from web1.theme import theme_manager
 
 logger = get_logger(__name__)
-from security_utils import SecurityUtils
-from theme import theme_manager
 
 
 class SettingsService:
@@ -23,6 +23,7 @@ class SettingsService:
         return {
             "values": env_vars,
             "masked": masked,
+            "descriptions": env_manager.get_env_descriptions(),
             "theme": theme_manager.current_theme_name,
             "availableThemes": theme_manager.get_available_themes(),
         }

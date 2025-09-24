@@ -2,12 +2,12 @@
 """
 Enhanced UI Launcher - Forces Window Visibility
 
-Delegates to minicli.launch_gui with visibility forcing enabled.
+Delegates to oldnicegui.main_gui_app.launch_gui with visibility forcing enabled.
 """
 
 import sys
 
-from minicli import launch_gui
+from oldnicegui.main_gui_app import launch_gui
 
 
 def main() -> int:

@@ -57,7 +57,7 @@ export function Header({
           <span className="emoji" role="img" aria-hidden="true">
             <Brain size={22} />
           </span>
-          Code Chat with AI
+          CodeWhisper
         </h1>
 
         <div className="header-selections">

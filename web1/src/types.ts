@@ -4,7 +4,7 @@ export interface ChatMessage {
   id: string;
   role: ChatRole;
   content: string;
-  rawContent?: string;
+  rawMarkdown?: string;
   timestamp: string;
   tokensUsed?: number;
   processingTime?: number;
@@ -44,6 +44,7 @@ export interface QuestionStatus {
 export interface ConversationHistoryEntry {
   role: ChatRole;
   content: string;
+  rawMarkdown?: string;
 }
 
 export interface ConversationSummary {
@@ -67,6 +68,7 @@ export interface ConversationCreateResponse {
 
 export interface AskQuestionResponse {
   response: string;
+  rawMarkdown: string;
   processingTime: number;
   tokensUsed: number;
   questionIndex: number;
@@ -75,6 +77,7 @@ export interface AskQuestionResponse {
 
 export interface SystemPromptResponse {
   response: string;
+  rawMarkdown: string;
   processingTime: number;
   tokensUsed: number;
   summary: ConversationSummary;
@@ -141,3 +144,11 @@ export interface ExportConversationResponse {
 export interface TopFoldersResponse {
   folders: string[];
 }
+
+export type SettingsResponse = {
+  values: Record<string, string>;
+  masked: Record<string, string>;
+  descriptions: Record<string, string>;
+  theme: string;
+  availableThemes: string[];
+};

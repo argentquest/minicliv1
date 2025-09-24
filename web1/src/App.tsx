@@ -121,6 +121,7 @@ const buildMessagesFromSummary = (summary: ConversationSummary): ChatMessage[] =
       id: `${summary.conversationId}-${index}`,
       role: entry.role,
       content: entry.content,
+      rawMarkdown: entry.role === 'assistant' ? (entry.rawMarkdown || entry.content) : undefined,
       timestamp,
       tokensUsed,
       processingTime,
@@ -434,6 +435,11 @@ function App() {
       setIsSubmitting(true);
       updateStatus('Question sent. Waiting for the assistant...', 'info');
       const response = await askQuestion(tab.conversationId, { question: trimmed });
+      const lastIndex = response.summary.conversationHistory.length - 1;
+      if (response.summary.conversationHistory[lastIndex]?.role === 'assistant') {
+        response.summary.conversationHistory[lastIndex].content = response.response;
+        response.summary.conversationHistory[lastIndex].rawMarkdown = response.rawMarkdown;
+      }
       updateTabSummaryState(tab.conversationId, response.summary, true);
       setQuestionDraft('');
       updateStatus(
@@ -567,6 +573,11 @@ function App() {
     try {
       updateStatus('Running system prompt...', 'info');
       const response = await runSystemPrompt(tab.conversationId);
+      const lastIndex = response.summary.conversationHistory.length - 1;
+      if (response.summary.conversationHistory[lastIndex]?.role === 'assistant') {
+        response.summary.conversationHistory[lastIndex].content = response.response;
+        response.summary.conversationHistory[lastIndex].rawMarkdown = response.rawMarkdown;
+      }
       updateTabSummaryState(tab.conversationId, response.summary, true);
       updateStatus(
         `System prompt executed in ${response.processingTime.toFixed(2)}s (${response.tokensUsed} tokens).`,
@@ -898,11 +909,9 @@ function App() {
 
       <SettingsModal
         isOpen={settingsModalOpen}
-        apiKey={apiKeyInput}
         isSaving={settingsSaving}
         error={settingsError}
         onClose={handleSettingsModalClose}
-        onChangeApiKey={setApiKeyInput}
         onSave={handleSettingsSave}
       />
 

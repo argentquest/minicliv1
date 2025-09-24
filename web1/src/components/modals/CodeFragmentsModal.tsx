@@ -20,7 +20,7 @@ export function CodeFragmentsModal({ isOpen, message, onClose }: CodeFragmentsMo
   const [showCopied, setShowCopied] = useState(false);
 
   const extractFragments = (text: string): CodeFragment[] => {
-    const rawText = message.rawContent || text; // Prefer raw Markdown content
+    const rawText = message.rawMarkdown || text; // Prefer raw Markdown content
     const fragments: CodeFragment[] = [];
     // Try Markdown first (on raw or fallback)
     let regex = /```(\w+)?\n([\s\S]*?)\n```/g;

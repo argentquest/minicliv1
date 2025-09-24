@@ -14,9 +14,9 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
   );
 
   return (
-    <Modal title="About Code Chat" isOpen={isOpen} onClose={onClose} footer={footer} width="480px">
+    <Modal title="About CodeWhisper" isOpen={isOpen} onClose={onClose} footer={footer} width="480px">
       <p>
-        Code Chat is a local-first interface for exploring your codebase with AI assistance. The desktop client connects with
+        CodeWhisper is a local-first interface for exploring your codebase with AI assistance. The desktop client connects with
         your configured model provider and keeps conversation context in sync with the selected files from your workspace.
       </p>
       <p>

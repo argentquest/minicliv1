@@ -2,12 +2,12 @@
 """
 Modern Code Chat with AI - Primary Application Launcher
 
-Delegates to minicli.launch_gui for the standard GUI experience.
+Delegates to oldnicegui.main_gui_app.launch_gui for the standard GUI experience.
 """
 
 import sys
 
-from minicli import launch_gui
+from oldnicegui.main_gui_app import launch_gui
 
 
 def main() -> int:

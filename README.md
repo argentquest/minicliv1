@@ -1,4 +1,4 @@
-# Code Chat with AI
+# CodeWhisper
 
 > A modern full-stack web application for intelligent code analysis and AI-powered development assistance
 
@@ -8,7 +8,7 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com)
 
-**Code Chat with AI** is a powerful full-stack web application that brings AI assistance directly to your development workflow. Select any codebase, choose from specialized AI experts, and get intelligent insights, code reviews, and architectural guidance through an intuitive web interface.
+**CodeWhisper** is a powerful full-stack web application that brings AI assistance directly to your development workflow. Select any codebase, choose from specialized AI experts, and get intelligent insights, code reviews, and architectural guidance through an intuitive web interface.
 
 ![Application Screenshot](docs/screenshot.png)
 
@@ -329,7 +329,7 @@ Access advanced configuration through **Settings** → **Environment Variables**
 ## 🗂️ Project Structure
 
 ```
-code-chat-ai/
+codewhisper/
 ├── 📁 Web Frontend (React)
 │   ├── web1/                  # React application
 │   │   ├── src/               # React source code
@@ -521,8 +521,8 @@ We welcome contributions from the community! Whether you're fixing bugs, adding 
 
 2. **Set up your development environment:**
    ```bash
-   git clone https://github.com/your-username/code-chat-ai.git
-   cd code-chat-ai
+   git clone https://github.com/your-username/codewhisper.git
+   cd codewhisper
    pip install -r requirements.txt -r requirements-test.txt
    ```
 
