@@ -1,8 +1,8 @@
-# CodeWhisper - Modern AI Code Analysis Application
+# WhisperCode - Modern AI Code Analysis Application
 
 ## Project Overview
 
-CodeWhisper is a powerful full-stack web application that brings AI assistance directly to your development workflow. It enables users to select any codebase, choose from specialized AI experts, and get intelligent insights, code reviews, and architectural guidance through an intuitive web interface. The application supports both GUI and CLI interfaces and provides multiple AI provider integrations.
+WhisperCode is a powerful full-stack web application that brings AI assistance directly to your development workflow. It enables users to select any codebase, choose from specialized AI experts, and get intelligent insights, code reviews, and architectural guidance through an intuitive web interface. The application supports both GUI and CLI interfaces and provides multiple AI provider integrations.
 
 ## Architecture
 

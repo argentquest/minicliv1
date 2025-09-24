@@ -1,4 +1,4 @@
-# CodeWhisper Architecture Diagram
+# WhisperCode Architecture Diagram
 
 ## High-Level Architecture
 
@@ -249,7 +249,7 @@ sequenceDiagram
 
 ## Component Interaction Overview
 
-The CodeWhisper application follows a modern three-tier architecture:
+The WhisperCode application follows a modern three-tier architecture:
 
 1. **Presentation Layer** (React):
    - Provides intuitive user interface for code analysis
