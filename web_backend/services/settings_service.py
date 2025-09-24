@@ -6,7 +6,7 @@ from typing import Dict, Tuple
 from common.env_manager import env_manager
 from common.logger import get_logger
 from security_utils import SecurityUtils
-from web1.theme import theme_manager
+from web_backend.services.theme_service import theme_manager
 
 logger = get_logger(__name__)
 
