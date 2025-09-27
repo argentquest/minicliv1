@@ -90,6 +90,25 @@
       "request": "launch",
       "program": "${file}",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Web2 Backend: Debug API",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "api:app",
+        "--host", "0.0.0.0",
+        "--port", "8001",
+        "--reload"
+      ],
+      "cwd": "${workspaceFolder}/web_backend_v2",
+      "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "PORT": "8001"
+      },
+      "jinja": true
     }
   ]
 }
